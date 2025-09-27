@@ -40,6 +40,7 @@ func main() {
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(db)
 	apiKeyHandler := &handlers.Handler{DB: db}
+	creditsHandler := &handlers.CreditsHandler{DB: db}
 
 	// Routes
 	// Auth routes
@@ -55,6 +56,14 @@ func main() {
 	{
 		keys.POST("/create", apiKeyHandler.CreateAPIKey)
 		keys.GET("", apiKeyHandler.ListAPIKeys)
+	}
+
+	// Credits routes
+	credits := r.Group("/credits")
+	{
+		credits.POST("/order", authHandler.AuthMiddleware(), creditsHandler.CreateOrder) // Create order
+		credits.POST("/add", creditsHandler.AddCredits)                                  // Razorpay webhook
+		credits.GET("", authHandler.AuthMiddleware(), creditsHandler.GetCredits)         // Protected route
 	}
 
 	r.GET("/", func(c *gin.Context) {

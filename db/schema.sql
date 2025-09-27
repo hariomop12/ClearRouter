@@ -1,4 +1,4 @@
-\restrict 2XfbDmpDJeee88w3DXjX1Cu7X1cP0Z9UEDkMSu9Fkuf571w7zAZLCgeMxqbvySY
+\restrict HTCEd9fpX9FfeC5UsvDwpb548jqkGAnfEdcVmGPAAqdDEpBa9AnhbcZHDlhQr5R
 
 -- Dumped from database version 15.14 (Debian 15.14-1.pgdg13+1)
 -- Dumped by pg_dump version 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1)
@@ -195,6 +195,14 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
+-- Name: credits unique_user_id; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.credits
+    ADD CONSTRAINT unique_user_id UNIQUE (user_id);
+
+
+--
 -- Name: users users_email_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -297,7 +305,7 @@ ALTER TABLE ONLY public.payments
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 2XfbDmpDJeee88w3DXjX1Cu7X1cP0Z9UEDkMSu9Fkuf571w7zAZLCgeMxqbvySY
+\unrestrict HTCEd9fpX9FfeC5UsvDwpb548jqkGAnfEdcVmGPAAqdDEpBa9AnhbcZHDlhQr5R
 
 
 --
@@ -307,4 +315,5 @@ ALTER TABLE ONLY public.payments
 INSERT INTO public.schema_migrations (version) VALUES
     ('20250927072843'),
     ('20250927101618'),
-    ('20250927102719');
+    ('20250927102719'),
+    ('20250927192900');
