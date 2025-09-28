@@ -1,0 +1,199 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+
+# Build output
+main
+tmp/
+build/
+dist/
+
+# Air (hot reload) temporary files
+.air.toml.tmp
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Docker volumes data
+pgdata/
+postgres-data/
+
+# Log files
+*.log
+logs/
+build-errors.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.cache/
+
+# Node.js (if you add frontend later)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# Coverage reports
+coverage/
+*.cover
+*.coverprofile
+
+# Profiling data
+*.prof
+*.pprof
+
+# Docker-related
+.dockerignore.bak
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Certificate files (keep private)
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# API keys and secrets (additional protection)
+secrets/
+keys/
+credentials/
+
+# Documentation build
+docs/_build/
+
+# Terraform (if used for infrastructure)
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Local development database dumps
+*.sql.gz
+*.dump
+database_backup/
+
+# Migration backups
+schema_backup.sql
+
+# Test fixtures that shouldn't be committed
+test_fixtures/
+mock_data/
+
+# Compiled Object files
+*.o
+*.a
+
+# Packages
+*.deb
+*.rpm
+*.tar.gz
+*.zip
+
+# Local configuration overrides
+config.local.json
+config.override.json
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# nyc test coverage
+.nyc_output
+
+# Debug logs
+debug.log
+error.log
+
+# Local history (some IDEs)
+.history/
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+Session.vim
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Local development tools
+.air/
+vendor/

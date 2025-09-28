@@ -1,34 +1,28 @@
-# Build stage
-FROM golang:1.24-alpine AS builder
+# Development stage
+FROM golang:1.23-alpine
 
-# Set working directory
+# Install development dependencies
+RUN apk add --no-cache git curl gcc musl-dev postgresql-client
+
+# Install Air for hot reloading
+RUN go install github.com/cosmtrek/air@v1.42.0
+
+# Install dbmate for database migrations
+RUN curl -fsSL -o /usr/local/bin/dbmate https://github.com/amacneil/dbmate/releases/latest/download/dbmate-linux-amd64 && \
+    chmod +x /usr/local/bin/dbmate
+
 WORKDIR /app
 
-# Copy go mod files
+# Copy go modules files first for better caching
 COPY go.mod go.sum ./
-
-# Download dependencies
 RUN go mod download
 
-# Copy the full project for proper Go module resolution
+# Copy the entire project structure
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./apps/backend/cmd/server/main.go
+# Make sure the entrypoint script is executable
+RUN chmod +x /app/apps/backend/docker-entrypoint.sh
 
-# Final stage
-FROM alpine:latest
-
-# Install ca-certificates for HTTPS requests
-RUN apk --no-cache add ca-certificates
-
-WORKDIR /root/
-
-# Copy the binary from builder stage
-COPY --from=builder /app/main .
-
-# Expose port
-EXPOSE 8080
-
-# Run the application
-CMD ["./main"]
+# Use the entrypoint script
+ENTRYPOINT ["/bin/sh", "/app/apps/backend/docker-entrypoint.sh"]
+CMD ["go", "run", "/app/apps/backend/cmd/server/main.go"]

@@ -12,14 +12,15 @@ import (
 	"gorm.io/gorm/logger"
 
 	"github.com/hariomop12/clearrouter/apps/backend/internal/handlers"
-	"github.com/hariomop12/clearrouter/apps/backend/internal/models"
 	"github.com/hariomop12/clearrouter/apps/backend/internal/providers"
 	"github.com/hariomop12/clearrouter/apps/backend/internal/services"
 )
 
 func main() {
+	// Load .env file if it exists (development mode)
+	// In production, environment variables are provided by Docker
 	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("No .env file found, using environment variables")
 	}
 
 	// Database connection
@@ -30,16 +31,8 @@ func main() {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	// Auto-migrate the schema
-	db.AutoMigrate(
-		&models.User{},
-		&models.APIKey{},
-		&models.Credits{},
-		&models.Payment{},
-		&models.APIUsageLog{},
-		&models.Chat{},
-		&models.ChatHistoryMessage{},
-	)
+	// Schema is managed by SQL migrations in /db/migrations/
+	// No AutoMigrate needed here
 
 	// Initialize router
 	r := gin.Default()

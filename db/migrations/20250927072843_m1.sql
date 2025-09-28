@@ -4,7 +4,7 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- 1️⃣ Users Table
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- 2️⃣ API Keys Table
-CREATE TABLE IF NOT EXISTS api_keys (
+CREATE TABLE api_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     api_key TEXT UNIQUE NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
 );
 
 -- 3️⃣ Credits Table
-CREATE TABLE IF NOT EXISTS credits (
+CREATE TABLE credits (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     total_credits NUMERIC(12,2) DEFAULT 0,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS credits (
 );
 
 -- 4️⃣ Payments Table
-CREATE TABLE IF NOT EXISTS payments (
+CREATE TABLE payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     razorpay_order_id VARCHAR(255) NOT NULL,
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 
 -- 5️⃣ Models Table
-CREATE TABLE IF NOT EXISTS models (
+CREATE TABLE models (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) UNIQUE NOT NULL,
     provider VARCHAR(100) NOT NULL,

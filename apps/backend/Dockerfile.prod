@@ -1,0 +1,43 @@
+# Production stage
+FROM golang:1.23-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git gcc musl-dev
+
+WORKDIR /app
+
+# Copy go modules files first for better caching
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN go build -o main ./apps/backend/cmd/server/main.go
+
+# Final stage
+FROM alpine:latest
+
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates postgresql-client curl
+
+# Install dbmate for database migrations
+RUN curl -fsSL -o /usr/local/bin/dbmate https://github.com/amacneil/dbmate/releases/latest/download/dbmate-linux-amd64 && \
+    chmod +x /usr/local/bin/dbmate
+
+WORKDIR /app
+
+# Copy binary from builder stage
+COPY --from=builder /app/main .
+
+# Copy necessary files
+COPY --from=builder /app/db ./db
+COPY --from=builder /app/apps/backend/docker-entrypoint.sh .
+
+# Make entrypoint executable
+RUN chmod +x docker-entrypoint.sh
+
+# Use the entrypoint script
+ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["./main"]

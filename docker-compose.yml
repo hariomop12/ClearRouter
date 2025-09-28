@@ -4,22 +4,28 @@ services:
     environment:
       POSTGRES_USER: clearrouter
       POSTGRES_PASSWORD: clearrouter_pass
-      POSTGRES_DB: router_db
+      POSTGRES_DB: clearrouter
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clearrouter"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
       context: .
-      dockerfile: ./apps/backend/Dockerfile
+      dockerfile: ./apps/backend/Dockerfile.prod
     ports:
       - "8080:8080"
     environment:
-      DATABASE_URL: "postgres://clearrouter:clearrouter_pass@postgres:5432/router_db?sslmode=disable"
+      DATABASE_URL: "postgres://clearrouter:clearrouter_pass@postgres:5432/clearrouter?sslmode=disable"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
 volumes:
   pgdata:

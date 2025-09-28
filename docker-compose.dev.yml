@@ -1,15 +1,42 @@
-version: '3.8'
 services:
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
     environment:
       POSTGRES_USER: clearrouter
       POSTGRES_PASSWORD: clearrouter_pass
-      POSTGRES_DB: router_db
+      POSTGRES_DB: clearrouter          # 🟢 same as backend DB
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - clearrouter_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clearrouter"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    environment:
+      - DATABASE_URL=postgres://clearrouter:clearrouter_pass@postgres:5432/clearrouter?sslmode=disable   # 🟢 same DB
+      - GIN_MODE=debug
+      - GORM_DEBUG=true
+    working_dir: /app/apps/backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
 
 volumes:
-  pgdata:
+  clearrouter_pgdata: {}

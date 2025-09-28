@@ -1,11 +1,12 @@
-\restrict 8Xc93dtDiEivEpzlhDXxqWZZ289wbcCt0aA7kAzi9cp7E4Vat7tMDSV2zfh14da
+\restrict IeD8c8h61mZncwcG8Ljne2TNCSaGyAiaQLvmaBzb47hDAAYoZOAtnmggeZVfP7V
 
--- Dumped from database version 15.14 (Debian 15.14-1.pgdg13+1)
--- Dumped by pg_dump version 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1)
+-- Dumped from database version 15.14
+-- Dumped by pg_dump version 17.6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -38,7 +39,7 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public.api_keys (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
+    user_id uuid,
     api_key text NOT NULL,
     active boolean DEFAULT true,
     created_at timestamp with time zone DEFAULT now()
@@ -54,19 +55,10 @@ CREATE TABLE public.api_usage_logs (
     user_id uuid,
     api_key_id uuid,
     model_id uuid,
-    input_tokens bigint DEFAULT 0,
-    output_tokens bigint DEFAULT 0,
+    input_tokens integer DEFAULT 0,
+    output_tokens integer DEFAULT 0,
     cost numeric(12,4) DEFAULT 0,
-    created_at timestamp with time zone DEFAULT now(),
-    model text,
-    provider text,
-    input_cost numeric,
-    output_cost numeric,
-    total_cost numeric,
-    status text,
-    error_message text,
-    request_id text,
-    tokens_used bigint
+    created_at timestamp with time zone DEFAULT now()
 );
 
 
@@ -107,7 +99,7 @@ CREATE TABLE public.chats (
 
 CREATE TABLE public.credits (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
+    user_id uuid,
     total_credits numeric(12,2) DEFAULT 0,
     used_credits numeric(12,2) DEFAULT 0,
     created_at timestamp with time zone DEFAULT now(),
@@ -136,7 +128,7 @@ CREATE TABLE public.models (
 
 CREATE TABLE public.payments (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
+    user_id uuid,
     razorpay_order_id character varying(255) NOT NULL,
     razorpay_payment_id character varying(255),
     amount numeric(12,2) NOT NULL,
@@ -405,7 +397,7 @@ ALTER TABLE ONLY public.payments
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 8Xc93dtDiEivEpzlhDXxqWZZ289wbcCt0aA7kAzi9cp7E4Vat7tMDSV2zfh14da
+\unrestrict IeD8c8h61mZncwcG8Ljne2TNCSaGyAiaQLvmaBzb47hDAAYoZOAtnmggeZVfP7V
 
 
 --
