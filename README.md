@@ -362,3 +362,31 @@ The application is containerized using Docker and can be deployed using the prov
    - Additional AI providers
    - Enhanced chat features
    - Advanced analytics
+
+## 🔄 CI/CD Pipeline
+
+The project includes a simple GitHub Actions pipeline that:
+
+### **Automated Testing**
+- ✅ Runs on every push and pull request
+- ✅ Sets up PostgreSQL test database
+- ✅ Runs Go tests with coverage
+- ✅ Builds the application
+
+### **Docker Integration**
+- ✅ Builds production Docker image
+- ✅ Pushes to Docker Hub (on main branch)
+- ✅ Tags with commit SHA and 'latest'
+
+### **Setup Instructions**
+1. Add these secrets to your GitHub repository:
+   - `DOCKER_USERNAME`: Your Docker Hub username
+   - `DOCKER_PASSWORD`: Your Docker Hub password
+
+2. The pipeline will automatically:
+   - Test your code on every commit
+   - Build and push Docker images on main branch
+   - Provide deployment-ready artifacts
+
+### **Pipeline Status**
+[![CI/CD](https://github.com/hariomop12/ClearRouter/workflows/ClearRouter%20CI/CD/badge.svg)](https://github.com/hariomop12/ClearRouter/actions)
