@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/haropm/clearrouter/apps/backend/internal/models"
+	"github.com/hariomop12/clearrouter/apps/backend/internal/models"
 	"github.com/razorpay/razorpay-go"
 
 	"github.com/gin-gonic/gin"

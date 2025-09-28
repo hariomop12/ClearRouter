@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/haropm/clearrouter/apps/backend/internal/models"
+	"github.com/hariomop12/clearrouter/apps/backend/internal/models"
 	"gorm.io/gorm"
 )
 

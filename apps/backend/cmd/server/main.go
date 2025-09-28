@@ -11,8 +11,10 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"github.com/haropm/clearrouter/apps/backend/internal/handlers"
-	"github.com/haropm/clearrouter/apps/backend/internal/models"
+	"github.com/hariomop12/clearrouter/apps/backend/internal/handlers"
+	"github.com/hariomop12/clearrouter/apps/backend/internal/models"
+	"github.com/hariomop12/clearrouter/apps/backend/internal/providers"
+	"github.com/hariomop12/clearrouter/apps/backend/internal/services"
 )
 
 func main() {
@@ -29,18 +31,27 @@ func main() {
 	}
 
 	// Auto-migrate the schema
-	// This only migrates the User model. The SQL migration file is more complete.
-	// It's better to run the SQL migration file manually.
-	// You could also add all your model structs here.
-	db.AutoMigrate(&models.User{}, &models.APIKey{}) // Migrate both User and APIKey models
+	db.AutoMigrate(
+		&models.User{},
+		&models.APIKey{},
+		&models.Credits{},
+		&models.Payment{},
+		&models.APIUsageLog{},
+	)
 
 	// Initialize router
 	r := gin.Default()
+
+	// Initialize providers and services
+	providerService := services.NewProviderService()
+	providerService.RegisterProvider(providers.NewOpenAIProvider())
+	providerService.RegisterProvider(providers.NewGoogleProvider())
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(db)
 	apiKeyHandler := &handlers.Handler{DB: db}
 	creditsHandler := &handlers.CreditsHandler{DB: db}
+	chatHandler := handlers.NewChatHandler(db, providerService)
 
 	// Routes
 	// Auth routes
@@ -65,6 +76,14 @@ func main() {
 		credits.POST("/add", creditsHandler.AddCredits)                                  // Razorpay webhook
 		credits.GET("", authHandler.AuthMiddleware(), creditsHandler.GetCredits)         // Protected route
 	}
+	// Chat routes
+	v1 := r.Group("/v1")
+	{
+		v1.POST("/chat/completions", chatHandler.ChatCompletions)
+	}
+
+	// Public routes
+	r.GET("/models", handlers.GetModelsHandler)
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "message": "ClearRouter API"})

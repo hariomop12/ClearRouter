@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
-	"github.com/haropm/clearrouter/apps/backend/internal/models"
-	"github.com/haropm/clearrouter/apps/backend/internal/utils"
+	"github.com/hariomop12/clearrouter/apps/backend/internal/models"
+	"github.com/hariomop12/clearrouter/apps/backend/internal/utils"
 )
 
 type AuthHandler struct {
