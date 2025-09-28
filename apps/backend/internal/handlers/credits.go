@@ -22,6 +22,11 @@ type CreditsHandler struct {
 	DB *gorm.DB
 }
 
+// NewCreditsHandler creates a new CreditsHandler instance
+func NewCreditsHandler(db *gorm.DB) *CreditsHandler {
+	return &CreditsHandler{DB: db}
+}
+
 // CreateOrderRequest represents the request to create a new order
 type CreateOrderRequest struct {
 	Amount float64 `json:"amount" binding:"required,min=1"`

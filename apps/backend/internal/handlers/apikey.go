@@ -17,6 +17,11 @@ type Handler struct {
 	DB *gorm.DB
 }
 
+// NewHandler creates a new Handler instance
+func NewHandler(db *gorm.DB) *Handler {
+	return &Handler{DB: db}
+}
+
 // CreateAPIKey handles the creation of a new API key for a user
 func (h *Handler) CreateAPIKey(c *gin.Context) {
 	// Get user ID from context (set by auth middleware)

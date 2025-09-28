@@ -37,6 +37,8 @@ func main() {
 		&models.Credits{},
 		&models.Payment{},
 		&models.APIUsageLog{},
+		&models.Chat{},
+		&models.ChatHistoryMessage{},
 	)
 
 	// Initialize router
@@ -49,9 +51,10 @@ func main() {
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(db)
-	apiKeyHandler := &handlers.Handler{DB: db}
-	creditsHandler := &handlers.CreditsHandler{DB: db}
+	apiKeyHandler := handlers.NewHandler(db)
+	creditsHandler := handlers.NewCreditsHandler(db)
 	chatHandler := handlers.NewChatHandler(db, providerService)
+	chatHistoryHandler := handlers.NewChatHistoryHandler(db)
 
 	// Routes
 	// Auth routes
@@ -80,6 +83,15 @@ func main() {
 	v1 := r.Group("/v1")
 	{
 		v1.POST("/chat/completions", chatHandler.ChatCompletions)
+	}
+
+	// Chat History routes (protected)
+	chatHistory := r.Group("/", authHandler.AuthMiddleware())
+	{
+		chatHistory.POST("/newchat", chatHistoryHandler.CreateNewChat)
+		chatHistory.GET("/chathistory", chatHistoryHandler.GetChatHistory)
+		chatHistory.GET("/chathistory/:chatId", chatHistoryHandler.GetChatDetail)
+		chatHistory.DELETE("/chathistory/:chatId", chatHistoryHandler.DeleteChat)
 	}
 
 	// Public routes

@@ -1,4 +1,4 @@
-\restrict HTCEd9fpX9FfeC5UsvDwpb548jqkGAnfEdcVmGPAAqdDEpBa9AnhbcZHDlhQr5R
+\restrict 8Xc93dtDiEivEpzlhDXxqWZZ289wbcCt0aA7kAzi9cp7E4Vat7tMDSV2zfh14da
 
 -- Dumped from database version 15.14 (Debian 15.14-1.pgdg13+1)
 -- Dumped by pg_dump version 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1)
@@ -54,10 +54,50 @@ CREATE TABLE public.api_usage_logs (
     user_id uuid,
     api_key_id uuid,
     model_id uuid,
-    input_tokens integer DEFAULT 0,
-    output_tokens integer DEFAULT 0,
+    input_tokens bigint DEFAULT 0,
+    output_tokens bigint DEFAULT 0,
     cost numeric(12,4) DEFAULT 0,
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    model text,
+    provider text,
+    input_cost numeric,
+    output_cost numeric,
+    total_cost numeric,
+    status text,
+    error_message text,
+    request_id text,
+    tokens_used bigint
+);
+
+
+--
+-- Name: chat_messages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.chat_messages (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    chat_id uuid NOT NULL,
+    role character varying(20) NOT NULL,
+    content text NOT NULL,
+    token_count integer DEFAULT 0,
+    cost numeric(12,6) DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT chat_messages_role_check CHECK (((role)::text = ANY ((ARRAY['user'::character varying, 'assistant'::character varying, 'system'::character varying])::text[])))
+);
+
+
+--
+-- Name: chats; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.chats (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    title character varying(255) DEFAULT 'New Chat'::character varying NOT NULL,
+    model character varying(100) NOT NULL,
+    provider character varying(100) NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
 );
 
 
@@ -67,7 +107,7 @@ CREATE TABLE public.api_usage_logs (
 
 CREATE TABLE public.credits (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid,
+    user_id uuid NOT NULL,
     total_credits numeric(12,2) DEFAULT 0,
     used_credits numeric(12,2) DEFAULT 0,
     created_at timestamp with time zone DEFAULT now(),
@@ -96,7 +136,7 @@ CREATE TABLE public.models (
 
 CREATE TABLE public.payments (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid,
+    user_id uuid NOT NULL,
     razorpay_order_id character varying(255) NOT NULL,
     razorpay_payment_id character varying(255),
     amount numeric(12,2) NOT NULL,
@@ -152,6 +192,22 @@ ALTER TABLE ONLY public.api_keys
 
 ALTER TABLE ONLY public.api_usage_logs
     ADD CONSTRAINT api_usage_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: chat_messages chat_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chat_messages
+    ADD CONSTRAINT chat_messages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: chats chats_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chats
+    ADD CONSTRAINT chats_pkey PRIMARY KEY (id);
 
 
 --
@@ -240,6 +296,34 @@ CREATE INDEX idx_api_usage_logs_user_id ON public.api_usage_logs USING btree (us
 
 
 --
+-- Name: idx_chat_messages_chat_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_chat_messages_chat_id ON public.chat_messages USING btree (chat_id);
+
+
+--
+-- Name: idx_chat_messages_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_chat_messages_created_at ON public.chat_messages USING btree (created_at);
+
+
+--
+-- Name: idx_chats_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_chats_created_at ON public.chats USING btree (created_at DESC);
+
+
+--
+-- Name: idx_chats_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_chats_user_id ON public.chats USING btree (user_id);
+
+
+--
 -- Name: idx_credits_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -286,6 +370,22 @@ ALTER TABLE ONLY public.api_usage_logs
 
 
 --
+-- Name: chat_messages chat_messages_chat_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chat_messages
+    ADD CONSTRAINT chat_messages_chat_id_fkey FOREIGN KEY (chat_id) REFERENCES public.chats(id) ON DELETE CASCADE;
+
+
+--
+-- Name: chats chats_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chats
+    ADD CONSTRAINT chats_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: credits credits_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -305,7 +405,7 @@ ALTER TABLE ONLY public.payments
 -- PostgreSQL database dump complete
 --
 
-\unrestrict HTCEd9fpX9FfeC5UsvDwpb548jqkGAnfEdcVmGPAAqdDEpBa9AnhbcZHDlhQr5R
+\unrestrict 8Xc93dtDiEivEpzlhDXxqWZZ289wbcCt0aA7kAzi9cp7E4Vat7tMDSV2zfh14da
 
 
 --
@@ -316,4 +416,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20250927072843'),
     ('20250927101618'),
     ('20250927102719'),
-    ('20250927192900');
+    ('20250927192900'),
+    ('20250928134500');
