@@ -54,10 +54,17 @@ jobs:
     - name: Build application
       run: go build -o main ./apps/backend/cmd/server/main.go
 
+    - name: Install Gosec
+      run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+    - name: Run Gosec
+      run: gosec -fmt=sarif -out=gosec-report.sarif ./...
+
     - name: Run security scan
-      uses: securecodewarrior/github-action-add-sarif@v1
+      uses: SecureCodeWarrior/github-action-add-sarif-contextual-training@v1
       with:
-        sarif-file: 'gosec-report.sarif'
+        input-pattern: 'gosec-report.sarif'
+        output-file: 'gosec-report.sarif'
       continue-on-error: true
 
   docker:
