@@ -43,6 +43,35 @@ func (p *OpenAIProvider) GetDefinition() ProviderDefinition {
 	return p.definition
 }
 
+func (p *OpenAIProvider) GetSupportedModels() []string {
+	return []string{
+		// GPT-4o Series
+		"gpt-4o-mini",
+		"gpt-4o",
+		// GPT-4 Series
+		"gpt-4",
+		"gpt-4-turbo",
+		"gpt-4.1",
+		"gpt-4.1-mini",
+		"gpt-4.1-nano",
+		// GPT-3.5 Series
+		"gpt-3.5-turbo",
+		// o1 Series (Reasoning Models)
+		"o1",
+		"o1-mini",
+		"o3",
+		"o3-mini",
+		// GPT-5 Series
+		"gpt-5",
+		"gpt-5-mini",
+		"gpt-5-nano",
+		"gpt-5-chat-latest",
+		// GPT OSS Series
+		"gpt-oss-120b",
+		"gpt-oss-20b",
+	}
+}
+
 func (p *OpenAIProvider) CreateChatCompletion(ctx context.Context, req *models.ChatCompletionsRequest) (*models.ChatCompletionsResponse, error) {
 	url := "https://api.openai.com/v1/chat/completions"
 
