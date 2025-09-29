@@ -1,0 +1,42 @@
+{
+  "name": "clearrouter-monorepo",
+  "version": "1.0.0",
+  "description": "ClearRouter AI Chat Service - Full Stack Application",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd apps/backend && docker-compose -f ../../docker-compose.dev.yml up backend",
+    "dev:frontend": "cd apps/frontend && npm run dev",
+    "dev:docker": "docker-compose -f docker-compose.dev.yml up",
+    "build": "npm run build:frontend",
+    "build:frontend": "cd apps/frontend && npm run build",
+    "build:backend": "cd apps/backend && docker build -t clearrouter-backend .",
+    "clean": "rm -rf apps/*/node_modules apps/*/dist apps/*/build node_modules",
+    "install:all": "npm install && cd apps/frontend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/clearrouter.git"
+  },
+  "keywords": [
+    "ai",
+    "chat",
+    "go",
+    "react",
+    "monorepo",
+    "docker",
+    "postgresql"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

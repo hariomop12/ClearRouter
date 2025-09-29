@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_USER: clearrouter
       POSTGRES_PASSWORD: clearrouter_pass
-      POSTGRES_DB: clearrouter          # 🟢 same as backend DB
+      POSTGRES_DB: clearrouter           
     command:
       - "postgres"
       - "-c"
@@ -35,6 +35,20 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    stdin_open: true
+    tty: true
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile.dev
+    ports:
+      - "3000:5173"
+    volumes:
+      - .:/app
+      - /app/apps/frontend/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8080
     stdin_open: true
     tty: true
 
