@@ -172,101 +172,113 @@ func (h *AnalyticsHandler) GetUsageStats(c *gin.Context) {
 		TopProviders:   topProviders,
 		DailyBreakdown: dailyStats,
 	}
-
 	c.JSON(http.StatusOK, stats)
 }
 
 // GetDailySummary returns daily usage summary
 func (h *AnalyticsHandler) GetDailySummary(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
+    userID, exists := c.Get("userID")
+    if !exists {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+        return
+    }
 
-	days := c.DefaultQuery("days", "30")
-	daysInt, err := strconv.Atoi(days)
-	if err != nil || daysInt < 1 || daysInt > 365 {
-		daysInt = 30
-	}
+    days := c.DefaultQuery("days", "30")
+    daysInt, err := strconv.Atoi(days)
+    if err != nil || daysInt < 1 || daysInt > 365 {
+        daysInt = 30
+    }
 
-	startDate := time.Now().AddDate(0, 0, -daysInt)
-	userUUID := userID.(uuid.UUID)
+    startDate := time.Now().AddDate(0, 0, -daysInt)
+    userUUID := userID.(uuid.UUID)
 
-	var summaries []models.DailyUsageSummary
-	if err := h.DB.Where("user_id = ? AND date >= ?", userUUID, startDate).
-		Order("date DESC").
-		Find(&summaries).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching daily summary"})
-		return
-	}
+    // Compute daily summaries on the fly from APIUsageAnalytics
+    type row struct {
+        Date              time.Time `json:"date"`
+        Requests          int64     `json:"requests"`
+        TotalInputTokens  int64     `json:"total_input_tokens"`
+        TotalOutputTokens int64     `json:"total_output_tokens"`
+        TotalTokens       int64     `json:"total_tokens"`
+        TotalCost         float64   `json:"total_cost"`
+    }
 
-	c.JSON(http.StatusOK, gin.H{"daily_summaries": summaries})
+    var results []row
+    if err := h.DB.Model(&models.APIUsageAnalytics{}).
+        Where("user_id = ? AND created_at >= ?", userUUID, startDate).
+        Select("DATE(created_at) as date, COUNT(*) as requests, SUM(input_tokens) as total_input_tokens, SUM(output_tokens) as total_output_tokens, SUM(total_tokens) as total_tokens, SUM(total_cost) as total_cost").
+        Group("DATE(created_at)").
+        Order("date DESC").
+        Scan(&results).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching daily summary"})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"daily_summaries": results})
 }
 
 // GetDetailedUsage returns detailed usage logs with pagination
 func (h *AnalyticsHandler) GetDetailedUsage(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
+    userID, exists := c.Get("userID")
+    if !exists {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+        return
+    }
 
-	// Pagination parameters
-	page := c.DefaultQuery("page", "1")
-	limit := c.DefaultQuery("limit", "50")
-	
-	pageInt, err := strconv.Atoi(page)
-	if err != nil || pageInt < 1 {
-		pageInt = 1
-	}
-	
-	limitInt, err := strconv.Atoi(limit)
-	if err != nil || limitInt < 1 || limitInt > 1000 {
-		limitInt = 50
-	}
+    // Pagination parameters
+    page := c.DefaultQuery("page", "1")
+    limit := c.DefaultQuery("limit", "50")
 
-	offset := (pageInt - 1) * limitInt
-	userUUID := userID.(uuid.UUID)
+    pageInt, err := strconv.Atoi(page)
+    if err != nil || pageInt < 1 {
+        pageInt = 1
+    }
 
-	// Optional filters
-	model := c.Query("model")
-	provider := c.Query("provider")
-	status := c.Query("status")
+    limitInt, err := strconv.Atoi(limit)
+    if err != nil || limitInt < 1 || limitInt > 1000 {
+        limitInt = 50
+    }
 
-	query := h.DB.Where("user_id = ?", userUUID)
-	
-	if model != "" {
-		query = query.Where("model_requested = ?", model)
-	}
-	if provider != "" {
-		query = query.Where("provider = ?", provider)
-	}
-	if status != "" {
-		query = query.Where("status = ?", status)
-	}
+    offset := (pageInt - 1) * limitInt
+    userUUID := userID.(uuid.UUID)
 
-	var total int64
-	query.Model(&models.APIUsageAnalytics{}).Count(&total)
+    // Optional filters
+    model := c.Query("model")
+    provider := c.Query("provider")
+    status := c.Query("status")
 
-	var usage []models.APIUsageAnalytics
-	if err := query.Order("created_at DESC").
-		Offset(offset).
-		Limit(limitInt).
-		Find(&usage).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching usage data"})
-		return
-	}
+    query := h.DB.Where("user_id = ?", userUUID)
 
-	c.JSON(http.StatusOK, gin.H{
-		"usage": usage,
-		"pagination": gin.H{
-			"page":       pageInt,
-			"limit":      limitInt,
-			"total":      total,
-			"total_pages": (total + int64(limitInt) - 1) / int64(limitInt),
-		},
-	})
+    if model != "" {
+        query = query.Where("model_requested = ?", model)
+    }
+    if provider != "" {
+        query = query.Where("provider = ?", provider)
+    }
+    if status != "" {
+        query = query.Where("status = ?", status)
+    }
+
+    var total int64
+    query.Model(&models.APIUsageAnalytics{}).Count(&total)
+
+    var usage []models.APIUsageAnalytics
+    if err := query.Order("created_at DESC").
+        Offset(offset).
+        Limit(limitInt).
+        Find(&usage).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching usage data"})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "usage": usage,
+        "pagination": gin.H{
+            "page":       pageInt,
+            "limit":      limitInt,
+            "total":      total,
+            "total_pages": (total + int64(limitInt) - 1) / int64(limitInt),
+        },
+    })
 }
 
 // GetCostBreakdown returns cost breakdown by model and provider

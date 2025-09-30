@@ -1,15 +1,16 @@
 package handlers
 
 import (
-	"fmt"
-	"net/http"
-	"time"
+    "fmt"
+    "net/http"
+    "time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"github.com/hariomop12/clearrouter/apps/backend/internal/models"
-	"github.com/hariomop12/clearrouter/apps/backend/internal/services"
-	"gorm.io/gorm"
+    "github.com/gin-gonic/gin"
+    "github.com/google/uuid"
+    "github.com/hariomop12/clearrouter/apps/backend/internal/models"
+    "github.com/hariomop12/clearrouter/apps/backend/internal/services"
+    "github.com/hariomop12/clearrouter/apps/backend/internal/utils"
+    "gorm.io/gorm"
 )
 
 type ChatHandler struct {
@@ -25,126 +26,136 @@ func NewChatHandler(db *gorm.DB, providerService *services.ProviderService) *Cha
 }
 
 func (h *ChatHandler) ChatCompletions(c *gin.Context) {
-	// Get API key from header
-	apiKey := c.GetHeader("Authorization")
-	if apiKey == "" || len(apiKey) < 8 {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid API key"})
-		return
-	}
-	// Remove "Bearer " prefix if present
-	apiKey = apiKey[7:]
+    // Get API key from header
+    apiKey := c.GetHeader("Authorization")
+    if apiKey == "" || len(apiKey) < 8 {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid API key"})
+        return
+    }
+    // Remove "Bearer " prefix if present
+    apiKey = apiKey[7:]
 
-	// Find API key in database
-	var key models.APIKey
-	if err := h.DB.Where("api_key = ? AND active = true", apiKey).First(&key).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid API key"})
-		return
-	}
+    // Find API key in database
+    var key models.APIKey
+    if err := h.DB.Where("api_key = ? AND active = true", apiKey).First(&key).Error; err != nil {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid API key"})
+        return
+    }
 
-	// Parse request
-	var req models.ChatCompletionsRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
-		return
-	}
+    // Parse request
+    var req models.ChatCompletionsRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+        return
+    }
 
-	// Determine provider from model name
-	providerID := models.GetProviderFromModel(req.Model)
-	if providerID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid model: %s not found", req.Model)})
-		return
-	}
+    // Determine provider from model name
+    providerID := models.GetProviderFromModel(req.Model)
+    if providerID == "" {
+        c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid model: %s not found", req.Model)})
+        return
+    }
 
-	// Get model pricing info
-	modelInfo, err := h.ProviderService.GetModelInfo(providerID, req.Model)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid model: %v", err)})
-		return
-	}
+    // Get model pricing info
+    modelInfo, err := h.ProviderService.GetModelInfo(providerID, req.Model)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid model: %v", err)})
+        return
+    }
 
-	// Get the provider
-	provider, err := h.ProviderService.GetProvider(providerID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid provider: %v", err)})
-		return
-	}
+    // Get the provider
+    provider, err := h.ProviderService.GetProvider(providerID)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid provider: %v", err)})
+        return
+    }
 
-	// Calculate input tokens
-	inputTokens, err := provider.CalculateTokens(req.Messages)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error calculating tokens"})
-		return
-	}
+    // Calculate input tokens
+    inputTokens, err := provider.CalculateTokens(req.Messages)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error calculating tokens"})
+        return
+    }
 
-	// Calculate estimated cost
-	estimatedInputCost := float64(inputTokens) * modelInfo.InputPrice
+    // Calculate estimated cost (USD token pricing), convert to INR if configured
+    estimatedInputCost := float64(inputTokens) * modelInfo.InputPrice
+    if utils.GetCurrency() == "INR" {
+        estimatedInputCost = utils.ConvertUSDToConfigured(estimatedInputCost)
+    }
 
-	// Check if user has enough credits
-	var credits models.Credits
-	if err := h.DB.Where("user_id = ?", key.UserID).First(&credits).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No credits available"})
-		return
-	}
+    // Check if user has enough credits
+    var credits models.Credits
+    if err := h.DB.Where("user_id = ?", key.UserID).First(&credits).Error; err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "No credits available"})
+        return
+    }
+    availableCredits := credits.TotalCredits - credits.UsedCredits
+    if availableCredits < estimatedInputCost {
+        c.JSON(http.StatusPaymentRequired, gin.H{"error": "Insufficient credits"})
+        return
+    }
 
-	availableCredits := credits.TotalCredits - credits.UsedCredits
-	if availableCredits < estimatedInputCost {
-		c.JSON(http.StatusPaymentRequired, gin.H{"error": "Insufficient credits"})
-		return
-	}
+    // Create chat completion
+    resp, err := provider.CreateChatCompletion(c.Request.Context(), &req)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error from provider: %v", err)})
+        return
+    }
 
-	// Create chat completion
-	resp, err := provider.CreateChatCompletion(c.Request.Context(), &req)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error from provider: %v", err)})
-		return
-	}
+    // Calculate actual costs (USD token pricing), convert to INR if configured
+    inputCost, outputCost := h.ProviderService.CalculateCost(modelInfo, resp.Usage.PromptTokens, resp.Usage.CompletionTokens)
+    totalCost := inputCost + outputCost
+    if utils.GetCurrency() == "INR" {
+        inputCost = utils.ConvertUSDToConfigured(inputCost)
+        outputCost = utils.ConvertUSDToConfigured(outputCost)
+        totalCost = inputCost + outputCost
+    }
 
-	// Calculate actual costs
-	inputCost, outputCost := h.ProviderService.CalculateCost(modelInfo, resp.Usage.PromptTokens, resp.Usage.CompletionTokens)
-	totalCost := inputCost + outputCost
+    // Begin transaction
+    tx := h.DB.Begin()
+    if tx.Error != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error starting transaction"})
+        return
+    }
 
-	// Begin transaction
-	tx := h.DB.Begin()
-	if tx.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error starting transaction"})
-		return
-	}
+    // Log detailed API usage analytics
+    startTime := time.Now()
+    responseTime := int(time.Since(startTime).Milliseconds())
 
-	// Log detailed API usage analytics
-	startTime := time.Now()
-	responseTime := int(time.Since(startTime).Milliseconds())
-	
-	usageAnalytics := models.APIUsageAnalytics{
-		ID:           uuid.NewString(),
-		UserID:       key.UserID.String(),
-		APIKeyID:     key.ID.String(),
-		RequestID:    resp.ID,
-		ModelRequested: req.Model,
-		ModelUsed:    req.Model, // For now, same as requested. Can be different if we do model fallbacks
-		Provider:     providerID,
-		InputTokens:  resp.Usage.PromptTokens,
-		OutputTokens: resp.Usage.CompletionTokens,
-		TotalTokens:  resp.Usage.TotalTokens,
-		InputCost:    inputCost,
-		OutputCost:   outputCost,
-		TotalCost:    totalCost,
-		InputPricePerToken:  modelInfo.InputPrice,
-		OutputPricePerToken: modelInfo.OutputPrice,
-		Status:       "success",
-		ResponseTimeMs: &responseTime,
-	}
+    usageAnalytics := models.APIUsageAnalytics{
+        ID:                  uuid.NewString(),
+        UserID:              key.UserID.String(),
+        APIKeyID:            key.ID.String(),
+        RequestID:           resp.ID,
+        ModelRequested:      req.Model,
+        ModelUsed:           req.Model,
+        Provider:            providerID,
+        InputTokens:         resp.Usage.PromptTokens,
+        OutputTokens:        resp.Usage.CompletionTokens,
+        TotalTokens:         resp.Usage.TotalTokens,
+        InputCost:           inputCost,
+        OutputCost:          outputCost,
+        TotalCost:           totalCost,
+        InputPricePerToken:  modelInfo.InputPrice,
+        OutputPricePerToken: modelInfo.OutputPrice,
+        Status:              "success",
+        ResponseTimeMs:      &responseTime,
+        Currency:            utils.GetCurrency(),
+    }
 
-	// Also keep the old usage log for backward compatibility
-	usageLog := models.APIUsageLog{
-		ID:           uuid.NewString(),
-		UserID:       key.UserID.String(),
-		APIKeyID:     key.ID.String(),
-		ModelID:      nil,
-		Model:        req.Model,
-		InputTokens:  resp.Usage.PromptTokens,
-		OutputTokens: resp.Usage.CompletionTokens,
-		Cost:         totalCost,
-	}
+    // Also keep the old usage log for backward compatibility
+    usageLog := models.APIUsageLog{
+        ID:           uuid.NewString(),
+        UserID:       key.UserID.String(),
+        APIKeyID:     key.ID.String(),
+        ModelID:      nil,
+        Model:        req.Model,
+        Provider:     providerID,
+        InputTokens:  resp.Usage.PromptTokens,
+        OutputTokens: resp.Usage.CompletionTokens,
+        Cost:         totalCost,
+        Currency:     utils.GetCurrency(),
+    }
 
     // Create both usage logs
     if err := tx.Create(&usageLog).Error; err != nil {
@@ -152,19 +163,18 @@ func (h *ChatHandler) ChatCompletions(c *gin.Context) {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Error logging usage"})
         return
     }
-
     if err := tx.Create(&usageAnalytics).Error; err != nil {
         tx.Rollback()
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Error logging analytics"})
         return
     }
 
-	// Update credits
-	if err := tx.Model(&credits).Update("used_credits", credits.UsedCredits+totalCost).Error; err != nil {
-		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating credits"})
-		return
-	}
+    // Update credits
+    if err := tx.Model(&credits).Update("used_credits", credits.UsedCredits+totalCost).Error; err != nil {
+        tx.Rollback()
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating credits"})
+        return
+    }
 
 	// Persist chat and messages
 	// Determine or create chat associated with this completion
@@ -261,13 +271,12 @@ func (h *ChatHandler) ChatCompletions(c *gin.Context) {
 		return
 	}
 
-	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error committing transaction"})
-		return
-	}
+        tx.Rollback()
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error committing transaction"})
+        return
+    }
 
-	// Return response
-	c.JSON(http.StatusOK, resp)
+    // Return response
+    c.JSON(http.StatusOK, resp)
 }
