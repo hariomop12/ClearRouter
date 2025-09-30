@@ -20,7 +20,9 @@ const Login: React.FC = () => {
 
   // Redirect if already logged in
   useEffect(() => {
+    console.log('Login component - Auth state changed:', { user: state.user, token: state.token });
     if (state.user && state.token) {
+      console.log('Redirecting to dashboard...');
       navigate('/dashboard');
     }
   }, [state.user, state.token, navigate]);
@@ -37,8 +39,11 @@ const Login: React.FC = () => {
     e.preventDefault();
     try {
       await login(formData);
-      navigate('/dashboard');
+      console.log('Login completed, navigating to dashboard...');
+      // Force navigate after successful login
+      window.location.href = '/dashboard';
     } catch (error) {
+      console.error('Login error:', error);
       // Error is handled by the auth context
     }
   };

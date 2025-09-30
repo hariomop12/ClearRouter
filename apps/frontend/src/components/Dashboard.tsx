@@ -13,6 +13,11 @@ const Dashboard: React.FC = () => {
 
   const { user } = state;
 
+  // Debug: log the auth state
+  React.useEffect(() => {
+    console.log('Dashboard mounted, auth state:', state);
+  }, [state]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-violet-900">
       {/* Header */}
