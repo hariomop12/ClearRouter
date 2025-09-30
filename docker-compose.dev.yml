@@ -23,10 +23,12 @@ services:
     build:
       context: .
       dockerfile: apps/backend/Dockerfile
+    command: ["air", "-c", "/app/.air.toml"]
     environment:
       - DATABASE_URL=postgres://clearrouter:clearrouter_pass@postgres:5432/clearrouter?sslmode=disable   # 🟢 same DB
       - GIN_MODE=debug
       - GORM_DEBUG=true
+      - SEED_ENABLE=true
     working_dir: /app/apps/backend
     ports:
       - "8080:8080"

@@ -10,6 +10,8 @@ type ChatMessage struct {
 
 // ChatCompletionsRequest represents a chat completion API request
 type ChatCompletionsRequest struct {
+	// Optional chat to append messages to. If empty, a new chat may be created by the handler.
+	ChatID   string        `json:"chat_id,omitempty"`
 	Model     string        `json:"model" binding:"required"`
 	Messages  []ChatMessage `json:"messages" binding:"required,min=1"`
 	MaxTokens *int          `json:"max_tokens,omitempty"`
@@ -39,16 +41,11 @@ type APIUsageLog struct {
 	ID           string    `json:"id" gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
 	UserID       string    `json:"user_id" gorm:"type:uuid"`
 	APIKeyID     string    `json:"api_key_id" gorm:"type:uuid"`
-	Model        string    `json:"model"`
-	Provider     string    `json:"provider"`
-	TokensUsed   int       `json:"tokens_used"`
-	Cost         float64   `json:"cost"`
-	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
-	Status       string    `json:"status"`
-	RequestID    string    `json:"request_id"`
+	ModelID      *string   `json:"model_id,omitempty" gorm:"type:uuid"` // Optional reference to models table
+	Model        string    `json:"model"`                               // Model name as string
+	Provider     string    `json:"provider"`                            // Provider name
 	InputTokens  int       `json:"input_tokens"`
 	OutputTokens int       `json:"output_tokens"`
-	InputCost    float64   `json:"input_cost"`
-	OutputCost   float64   `json:"output_cost"`
-	TotalCost    float64   `json:"total_cost"`
+	Cost         float64   `json:"cost" gorm:"type:numeric(12,4)"`
+	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
 }

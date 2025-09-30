@@ -2,7 +2,6 @@ package models
 
 import (
 	"time"
-
 	"github.com/google/uuid"
 )
 
@@ -34,6 +33,8 @@ type ChatHistoryMessage struct {
 	// Associations
 	Chat Chat `json:"chat,omitempty" gorm:"constraint:OnDelete:CASCADE"`
 }
+// to use the existing migration table name 'chat_messages'.
+func (ChatHistoryMessage) TableName() string { return "chat_messages" }
 
 // NewChatRequest represents the request to create a new chat
 type NewChatRequest struct {

@@ -44,11 +44,84 @@ This will start:
 
 ```bash
 # Development with hot reload
-docker-compose -f docker-compose.dev.yml up
+docker compose -f docker-compose.dev.yml up -d
 
 # Production build
 docker-compose up
 ```
+
+### Database Seeding (dev)
+
+The backend seeds a default user on startup (idempotent) so you can log in immediately during development.
+
+- Default user:
+  - Email: `admin@clearrouter.local`
+  - Name: `Admin`
+  - Password: `admin123`
+  - EmailVerified: true
+
+- Environment overrides (set in `docker-compose.dev.yml` under `backend.environment` or your shell):
+  - `SEED_DEFAULT_USER_EMAIL` – default `admin@clearrouter.local`
+  - `SEED_DEFAULT_USER_NAME` – default `Admin`
+  - `SEED_DEFAULT_USER_PASSWORD` – default `admin123`
+  - `SEED_ENABLE` – set to `false` to disable seeding
+
+- Apply migrations (if needed):
+  - In dev (container): `docker compose -f docker-compose.dev.yml exec backend dbmate -d /app/db/migrations up`
+  - From host (psql/TablePlus): use Postgres URI `postgres://clearrouter:clearrouter_pass@localhost:5432/clearrouter?sslmode=disable`
+
+Notes:
+- Seeding runs after the backend connects to the DB and only creates the user if it does not already exist.
+- Do not use these defaults in production.
+
+### Add Credits (dev)
+
+In development, simulate Razorpay's webhook to credit a user account.
+
+- **Webhook endpoint**: `POST /credits/add`
+- **Header**: `X-Razorpay-Signature` (HMAC-SHA256 of raw body using your webhook secret)
+- **Helper script**: `scripts/gen_razorpay_signature.sh`
+
+1) Create a payload file (example):
+```json
+{
+  "event": "payment.captured",
+  "payload": {
+    "payment": { "entity": { "id": "rzp_test_xxx", "amount": 10000, "status": "captured", "order_id": "order_xxx" } },
+    "order":   { "entity": { "id": "order_xxx", "amount": 10000, "notes": { "user_id": "<USER_UUID>" } } }
+  }
+}
+```
+
+2) Generate signature and call webhook:
+```bash
+# Set your webhook secret (from Razorpay dashboard)
+export RAZORPAY_WEBHOOK_SECRET="your_webhook_secret"
+
+# Generate signature (prints hex)
+SIG=$(scripts/gen_razorpay_signature.sh --payload payload.json)
+
+# Send webhook (use --data-binary to preserve raw bytes)
+curl -sS http://localhost:8080/credits/add \
+  -H "Content-Type: application/json" \
+  -H "X-Razorpay-Signature: $SIG" \
+  --data-binary @payload.json
+```
+
+3) Verify credits (JWT required):
+```bash
+# Login to get token (example)
+curl -s http://localhost:8080/auth/login -H 'Content-Type: application/json' \
+  --data '{"email":"admin@clearrouter.local","password":"admin123"}'
+
+# Then call credits endpoint with Authorization: Bearer <token>
+curl -s http://localhost:8080/credits -H "Authorization: Bearer <JWT>"
+```
+
+Notes:
+- The signature must be computed on the exact raw bytes sent to the server.
+- For another user, replace `<USER_UUID>` in the payload `order.entity.notes.user_id` with that user's UUID.
+- In production, Razorpay calls this endpoint directly; do not expose your webhook secret.
 
 ## Project Structure
 

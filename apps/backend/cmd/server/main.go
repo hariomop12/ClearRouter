@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm/logger"
 
 	"github.com/hariomop12/clearrouter/apps/backend/internal/handlers"
+	"github.com/hariomop12/clearrouter/apps/backend/internal/seed"
 	"github.com/hariomop12/clearrouter/apps/backend/internal/providers"
 	"github.com/hariomop12/clearrouter/apps/backend/internal/services"
 )
@@ -34,9 +35,11 @@ func main() {
 	// Schema is managed by SQL migrations in /db/migrations/
 	// No AutoMigrate needed here
 
+	// Seed default user (idempotent)
+	seed.SeedDefaultUser(db)
+
 	// Initialize router
 	r := gin.Default()
-
 	// Initialize providers and services
 	providerService := services.NewProviderService()
 	providerService.RegisterProvider(providers.NewOpenAIProvider())
@@ -48,6 +51,8 @@ func main() {
 	creditsHandler := handlers.NewCreditsHandler(db)
 	chatHandler := handlers.NewChatHandler(db, providerService)
 	chatHistoryHandler := handlers.NewChatHistoryHandler(db)
+	analyticsHandler := handlers.NewAnalyticsHandler(db)
+	healthHandler := handlers.NewHealthHandler(db)
 
 	// Routes
 	// Auth routes
@@ -87,8 +92,21 @@ func main() {
 		chatHistory.DELETE("/chathistory/:chatId", chatHistoryHandler.DeleteChat)
 	}
 
+	// Analytics routes (protected)
+	analytics := r.Group("/analytics", authHandler.AuthMiddleware())
+	{
+		analytics.GET("/usage", analyticsHandler.GetUsageStats)
+		analytics.GET("/daily", analyticsHandler.GetDailySummary)
+		analytics.GET("/detailed", analyticsHandler.GetDetailedUsage)
+		analytics.GET("/costs", analyticsHandler.GetCostBreakdown)
+	}
+
 	// Public routes
 	r.GET("/models", handlers.GetModelsHandler)
+	r.GET("/health/super", healthHandler.SuperHealth)
+
+	// API Key-based analytics (no JWT required)
+	r.GET("/api/usage", analyticsHandler.GetUsageStatsWithAPIKey)
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "message": "ClearRouter API"})

@@ -50,62 +50,41 @@ func (p *GoogleProvider) GetDefinition() ProviderDefinition {
 
 func (p *GoogleProvider) GetSupportedModels() []string {
 	return []string{
-		// Gemini 1.5 Series
-		"gemini-1.5-flash",
-		"gemini-1.5-flash-8b",
-		"gemini-1.5-pro",
-		// Gemini 2.0 Series
-		"gemini-2.0-flash",
-		"gemini-2.0-flash-lite",
-		// Gemini 2.5 Series
-		"gemini-2.5-pro",
-		"gemini-2.5-pro-preview-05-06",
-		"gemini-2.5-pro-preview-06-05",
+		// Latest Models (Recommended)
+		"gemini-flash-latest",
+		"gemini-pro-latest",
+		"gemini-flash-lite-latest",
+		// Gemini 2.5 Series (Current Available Models)
 		"gemini-2.5-flash",
 		"gemini-2.5-flash-lite",
-		"gemini-2.5-flash-preview-04-17",
-		"gemini-2.5-flash-preview-05-20",
+		"gemini-2.5-pro",
 		"gemini-2.5-flash-preview-09-2025",
 		"gemini-2.5-flash-lite-preview-09-2025",
 		"gemini-2.5-flash-image-preview",
-		"gemini-2.5-flash-preview-04-17-thinking",
-		// Gemma Series
-		"gemma-3n-e2b-it",
-		"gemma-3n-e4b-it",
-		"gemma-3-1b-it",
-		"gemma-3-4b-it",
-		"gemma-3-12b-it",
+		// Legacy Models (for backward compatibility)
+		"gemini-1.5-flash",
+		"gemini-1.5-pro",
 	}
 }
 
 // getActualModelName maps our model IDs to the actual model names used by Google API
 func (p *GoogleProvider) getActualModelName(modelID string) string {
 	modelMap := map[string]string{
-		// Gemini 1.5 Series
-		"gemini-1.5-flash":    "gemini-1.5-flash",
-		"gemini-1.5-flash-8b": "gemini-1.5-flash-8b",
-		"gemini-1.5-pro":      "gemini-1.5-pro",
-		// Gemini 2.0 Series
-		"gemini-2.0-flash":      "gemini-2.0-flash",
-		"gemini-2.0-flash-lite": "gemini-2.0-flash-lite",
-		// Gemini 2.5 Series
-		"gemini-2.5-pro":                              "gemini-2.5-pro",
-		"gemini-2.5-pro-preview-05-06":               "gemini-2.5-pro-preview-05-06",
-		"gemini-2.5-pro-preview-06-05":               "gemini-2.5-pro-preview-06-05",
+		// Latest Models (Recommended)
+		"gemini-flash-latest":      "gemini-flash-latest",
+		"gemini-pro-latest":        "gemini-pro-latest",
+		"gemini-flash-lite-latest": "gemini-flash-lite-latest",
+		// Gemini 2.5 Series (Current Available Models)
 		"gemini-2.5-flash":                            "gemini-2.5-flash",
 		"gemini-2.5-flash-lite":                       "gemini-2.5-flash-lite",
-		"gemini-2.5-flash-preview-04-17":             "gemini-2.5-flash-preview-04-17",
-		"gemini-2.5-flash-preview-05-20":             "gemini-2.5-flash-preview-05-20",
+		"gemini-2.5-pro":                              "gemini-2.5-pro",
 		"gemini-2.5-flash-preview-09-2025":           "gemini-2.5-flash-preview-09-2025",
 		"gemini-2.5-flash-lite-preview-09-2025":      "gemini-2.5-flash-lite-preview-09-2025",
 		"gemini-2.5-flash-image-preview":             "gemini-2.5-flash-image-preview",
-		"gemini-2.5-flash-preview-04-17-thinking":    "gemini-2.5-flash-preview-04-17-thinking",
-		// Gemma Series
-		"gemma-3n-e2b-it":  "gemma-3n-e2b-it",
-		"gemma-3n-e4b-it":  "gemma-3n-e4b-it",
-		"gemma-3-1b-it":    "gemma-3-1b-it",
-		"gemma-3-4b-it":    "gemma-3-4b-it",
-		"gemma-3-12b-it":   "gemma-3-12b-it",
+		// Legacy Model Mappings (map old names to new available models)
+		"gemini-1.5-flash":    "gemini-2.5-flash",      // Map to closest available model
+		"gemini-1.5-pro":      "gemini-2.5-pro",        // Map to closest available model
+		"gemini-1.5-flash-8b": "gemini-2.5-flash-lite", // Map to lite version
 	}
 
 	if actualName, exists := modelMap[modelID]; exists {
