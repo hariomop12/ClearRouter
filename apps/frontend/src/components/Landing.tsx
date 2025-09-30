@@ -15,6 +15,12 @@ const Landing: React.FC = () => {
             </div>
             <div className="flex items-center space-x-4">
               <Link
+                to="/models"
+                className="text-gray-300 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                Models
+              </Link>
+              <Link
                 to="/login"
                 className="text-gray-300 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
               >
@@ -36,18 +42,18 @@ const Landing: React.FC = () => {
         {/* Background animations */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-600/20 rounded-full blur-3xl animate-pulse animation-delay-2000"></div>
-          <div className="absolute top-3/4 left-1/2 w-48 h-48 bg-blue-600/20 rounded-full blur-3xl animate-pulse animation-delay-4000"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-600/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
+          <div className="absolute top-3/4 left-1/2 w-48 h-48 bg-blue-600/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '4s'}}></div>
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
           <div className="text-center">
-            <h1 className="text-4xl sm:text-6xl font-bold mb-6">
+            <h2 className="text-4xl sm:text-6xl font-bold mb-6">
               Your Gateway to{' '}
               <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                 AI Excellence
               </span>
-            </h1>
+            </h2>
             <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
               Access multiple AI providers through a single, unified API. Switch between OpenAI, Google AI, and more with seamless integration and intelligent routing.
             </p>
@@ -58,12 +64,12 @@ const Landing: React.FC = () => {
               >
                 Get Started Free
               </Link>
-              <a
-                href="#features"
+              <Link
+                to="/models"
                 className="border border-gray-600 hover:border-gray-500 text-white px-8 py-3 rounded-lg font-semibold transition-all hover:bg-white/10"
               >
-                Learn More
-              </a>
+                Explore Models
+              </Link>
             </div>
 
             {/* Code Example */}
@@ -172,7 +178,7 @@ const Landing: React.FC = () => {
             </div>
             <div className="mt-8 pt-8 border-t border-gray-800">
               <p className="text-gray-500 text-sm">
-                © 2024 ClearRouter. All rights reserved.
+                © 2025 ClearRouter. All rights reserved.
               </p>
             </div>
           </div>
