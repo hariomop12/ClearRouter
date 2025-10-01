@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: clearrouter
+      POSTGRES_PASSWORD: clearrouter_pass
+      POSTGRES_DB: clearrouter
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./db/migrations:/docker-entrypoint-initdb.d/migrations
+    restart: unless-stopped
+    networks:
+      - clearrouter-network
+
+  # ClearRouter Full Stack App
+  clearrouter-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    environment:
+      - DATABASE_URL=postgresql://clearrouter:clearrouter_pass@postgres:5432/clearrouter
+      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      - GIN_MODE=release
+      - PORT=8080
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=clearrouter
+      - DB_PASSWORD=clearrouter_pass
+      - DB_NAME=clearrouter
+    ports:
+      - "80:80"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - clearrouter-network
+
+volumes:
+  postgres_data:
+
+networks:
+  clearrouter-network:
+    driver: bridge
