@@ -12,10 +12,9 @@ const Login: React.FC = () => {
   const { state, login, clearError } = useAuth();
   const navigate = useNavigate();
 
-  // Clear errors when component mounts or unmounts
+  // Clear errors when component mounts
   useEffect(() => {
     clearError();
-    return () => clearError();
   }, [clearError]);
 
   // Redirect if already logged in

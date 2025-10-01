@@ -5,7 +5,8 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: true,
+    host: '0.0.0.0', // Bind to all interfaces for Docker
+    port: 5173,
     allowedHosts: [
       'clan-organised-genealogy-powerseller.trycloudflare.com',
       '.trycloudflare.com', // Allow all cloudflare tunnel domains
