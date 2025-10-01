@@ -96,6 +96,50 @@ func (h *Handler) ListAPIKeys(c *gin.Context) {
 	c.JSON(http.StatusOK, apiKeys)
 }
 
+// DeleteAPIKey handles deleting an API key
+func (h *Handler) DeleteAPIKey(c *gin.Context) {
+	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	// Get API key ID from URL parameter
+	keyID := c.Param("id")
+	if keyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "API key ID is required"})
+		return
+	}
+
+	// Parse UUID
+	keyUUID, err := uuid.Parse(keyID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid API key ID format"})
+		return
+	}
+
+	// Find the API key to ensure it belongs to the user
+	var apiKey models.APIKey
+	if err := h.DB.Where("id = ? AND user_id = ?", keyUUID, userID.(uuid.UUID)).First(&apiKey).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "API key not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error finding API key"})
+		return
+	}
+
+	// Delete the API key
+	if err := h.DB.Delete(&apiKey).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error deleting API key"})
+		return
+	}
+
+	fmt.Printf("Successfully deleted API key. ID: %s\n", apiKey.ID)
+	c.JSON(http.StatusOK, gin.H{"message": "API key deleted successfully"})
+}
+
 // generateAPIKey creates a secure random API key
 func generateAPIKey() (string, error) {
 	b := make([]byte, 32)

@@ -29,18 +29,62 @@ const DashboardHome: React.FC = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      setError(null);
       
-      // Fetch analytics data
-      const [analyticsResponse, creditsResponse] = await Promise.all([
-        api.get('/analytics/usage?days=30'),
-        api.get('/credits')
-      ]);
+      // Fetch analytics data with individual error handling
+      let analyticsData = null;
+      let creditsData = null;
       
-      setStats(analyticsResponse.data);
-      setCredits(creditsResponse.data);
+      try {
+        const analyticsResponse = await api.get('/analytics/usage?days=30');
+        analyticsData = analyticsResponse.data;
+        console.log('Analytics data received:', analyticsData);
+      } catch (analyticsErr) {
+        console.warn('Analytics API failed:', analyticsErr);
+        // Set default analytics data
+        analyticsData = {
+          total_requests: 0,
+          total_tokens: 0,
+          total_cost: 0,
+          top_models: [],
+          top_providers: [],
+          daily_breakdown: []
+        };
+      }
+      
+      try {
+        const creditsResponse = await api.get('/credits');
+        creditsData = creditsResponse.data;
+        console.log('Credits data received:', creditsData);
+      } catch (creditsErr) {
+        console.warn('Credits API failed:', creditsErr);
+        // Set default credits data
+        creditsData = {
+          total_credits: 0,
+          used_credits: 0,
+          remaining_credits: 0
+        };
+      }
+      
+      setStats(analyticsData);
+      setCredits(creditsData);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
       setError('Failed to load dashboard data');
+      // Set fallback data to prevent crashes
+      setStats({
+        total_requests: 0,
+        total_tokens: 0,
+        total_cost: 0,
+        top_models: [],
+        top_providers: [],
+        daily_breakdown: []
+      });
+      setCredits({
+        total_credits: 0,
+        used_credits: 0,
+        remaining_credits: 0
+      });
     } finally {
       setLoading(false);
     }
@@ -80,7 +124,7 @@ const DashboardHome: React.FC = () => {
         {/* Organization Credits */}
         <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-800 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-400 text-sm font-medium">Organization Credits</h3>
+            <h3 className="text-gray-400 text-sm font-medium">User Credits</h3>
             <div className="p-2 bg-green-500/20 rounded-lg">
               <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
@@ -88,7 +132,7 @@ const DashboardHome: React.FC = () => {
             </div>
           </div>
           <div className="text-3xl font-bold text-white mb-2">
-            {credits ? credits.remaining_credits.toLocaleString() : '0'}
+            {credits && credits.remaining_credits ? credits.remaining_credits.toLocaleString() : '0'}
           </div>
           <div className="text-sm text-gray-400">
             Available Balance
@@ -106,7 +150,7 @@ const DashboardHome: React.FC = () => {
             </div>
           </div>
           <div className="text-3xl font-bold text-white mb-2">
-            {stats ? stats.total_requests.toLocaleString() : '0'}
+            {stats && stats.total_requests ? stats.total_requests.toLocaleString() : '0'}
           </div>
           <div className="text-sm text-gray-400">
             Last 30 days
@@ -124,7 +168,7 @@ const DashboardHome: React.FC = () => {
             </div>
           </div>
           <div className="text-3xl font-bold text-white mb-2">
-            {stats ? stats.total_tokens.toLocaleString() : '0'}
+            {stats && stats.total_tokens ? stats.total_tokens.toLocaleString() : '0'}
           </div>
           <div className="text-sm text-gray-400">
             Last 30 days
@@ -143,11 +187,11 @@ const DashboardHome: React.FC = () => {
                 {stats.top_models.slice(0, 5).map((model: any, index: number) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
                     <div>
-                      <p className="text-white font-medium">{model.model}</p>
-                      <p className="text-sm text-gray-400">{model.requests} requests</p>
+                      <p className="text-white font-medium">{model.model || 'Unknown Model'}</p>
+                      <p className="text-sm text-gray-400">{model.requests || 0} requests</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-white font-medium">{model.tokens.toLocaleString()}</p>
+                      <p className="text-white font-medium">{model.tokens ? model.tokens.toLocaleString() : '0'}</p>
                       <p className="text-xs text-gray-400">tokens</p>
                     </div>
                   </div>
@@ -166,11 +210,11 @@ const DashboardHome: React.FC = () => {
                 {stats.top_providers.slice(0, 5).map((provider: any, index: number) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
                     <div>
-                      <p className="text-white font-medium capitalize">{provider.provider}</p>
-                      <p className="text-sm text-gray-400">{provider.requests} requests</p>
+                      <p className="text-white font-medium capitalize">{provider.provider || 'Unknown Provider'}</p>
+                      <p className="text-sm text-gray-400">{provider.requests || 0} requests</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-white font-medium">${provider.cost.toFixed(4)}</p>
+                      <p className="text-white font-medium">${provider.cost ? provider.cost.toFixed(4) : '0.0000'}</p>
                       <p className="text-xs text-gray-400">cost</p>
                     </div>
                   </div>

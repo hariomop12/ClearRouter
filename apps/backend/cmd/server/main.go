@@ -13,8 +13,8 @@ import (
 	"gorm.io/gorm/logger"
 
 	"github.com/hariomop12/clearrouter/apps/backend/internal/handlers"
-	"github.com/hariomop12/clearrouter/apps/backend/internal/seed"
 	"github.com/hariomop12/clearrouter/apps/backend/internal/providers"
+	"github.com/hariomop12/clearrouter/apps/backend/internal/seed"
 	"github.com/hariomop12/clearrouter/apps/backend/internal/services"
 )
 
@@ -41,16 +41,16 @@ func main() {
 
 	// Initialize router
 	r := gin.Default()
-	
+
 	// Configure CORS
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000", },
+		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}))
-	
+
 	// Initialize providers and services
 	providerService := services.NewProviderService()
 	providerService.RegisterProvider(providers.NewOpenAIProvider())
@@ -79,6 +79,7 @@ func main() {
 	{
 		keys.POST("/create", apiKeyHandler.CreateAPIKey)
 		keys.GET("", apiKeyHandler.ListAPIKeys)
+		keys.DELETE("/:id", apiKeyHandler.DeleteAPIKey)
 	}
 
 	// Credits routes

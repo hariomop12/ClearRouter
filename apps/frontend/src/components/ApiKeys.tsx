@@ -31,20 +31,35 @@ const ApiKeys: React.FC = () => {
   const createApiKey = async () => {
     try {
       setCreating(true);
+      setError(null);
       const response = await api.post('/keys/create');
       setApiKeys([response.data, ...apiKeys]);
-    } catch (err) {
-      setError('Failed to create API key');
+      
+      // Success notification
+      alert('API key created successfully! Make sure to copy it now - you won\'t be able to see it again.');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || 'Failed to create API key';
+      setError(errorMessage);
       console.error('Error creating API key:', err);
     } finally {
       setCreating(false);
     }
   };
 
-  const deleteApiKey = async (keyId: string) => {
+  const deleteApiKey = async (keyId: string, keyPreview: string) => {
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to delete this API key?\n\nKey: ${keyPreview}...\n\nThis action cannot be undone.`
+    );
+    
+    if (!confirmed) return;
+
     try {
       await api.delete(`/keys/${keyId}`);
       setApiKeys(apiKeys.filter(key => key.id !== keyId));
+      
+      // Success notification
+      alert('API key deleted successfully!');
     } catch (err) {
       setError('Failed to delete API key');
       console.error('Error deleting API key:', err);
@@ -53,7 +68,6 @@ const ApiKeys: React.FC = () => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    // TODO: Add toast notification
     alert('API key copied to clipboard!');
   };
 
@@ -138,15 +152,20 @@ const ApiKeys: React.FC = () => {
               <div key={apiKey.id} className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        apiKey.active 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {apiKey.active ? 'Active' : 'Inactive'}
-                      </span>
-                      <span className="text-sm text-gray-400">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-3">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          apiKey.active 
+                            ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                            : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                        }`}>
+                          {apiKey.active ? 'Active' : 'Inactive'}
+                        </span>
+                        <span className="text-sm text-gray-400">
+                          Key ID: {apiKey.api_key.substring(0, 8)}...
+                        </span>
+                      </div>
+                      <span className="text-sm text-gray-500">
                         Created: {new Date(apiKey.created_at).toLocaleDateString()}
                       </span>
                     </div>
@@ -169,7 +188,7 @@ const ApiKeys: React.FC = () => {
                   
                   <div className="ml-4">
                     <button
-                      onClick={() => deleteApiKey(apiKey.id)}
+                      onClick={() => deleteApiKey(apiKey.id, apiKey.api_key.substring(0, 8))}
                       className="inline-flex items-center px-3 py-2 border border-red-600 rounded-lg text-sm text-red-300 hover:text-white hover:bg-red-600 transition-all"
                     >
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
