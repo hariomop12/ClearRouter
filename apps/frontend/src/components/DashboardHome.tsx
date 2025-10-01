@@ -15,7 +15,7 @@ interface UsageStats {
 interface Credits {
   total_credits: number;
   used_credits: number;
-  remaining_credits: number;
+  available_credits: number;
 }
 
 const DashboardHome: React.FC = () => {
@@ -51,7 +51,7 @@ const DashboardHome: React.FC = () => {
           daily_breakdown: []
         };
       }
-      
+
       try {
         const creditsResponse = await api.get('/credits');
         creditsData = creditsResponse.data;
@@ -65,26 +65,12 @@ const DashboardHome: React.FC = () => {
           remaining_credits: 0
         };
       }
-      
+
       setStats(analyticsData);
       setCredits(creditsData);
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
+    } catch (err: any) {
+      console.error('Failed to fetch dashboard data:', err);
       setError('Failed to load dashboard data');
-      // Set fallback data to prevent crashes
-      setStats({
-        total_requests: 0,
-        total_tokens: 0,
-        total_cost: 0,
-        top_models: [],
-        top_providers: [],
-        daily_breakdown: []
-      });
-      setCredits({
-        total_credits: 0,
-        used_credits: 0,
-        remaining_credits: 0
-      });
     } finally {
       setLoading(false);
     }
@@ -96,26 +82,38 @@ const DashboardHome: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+      <div className="max-w-7xl mx-auto p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-700 rounded-lg w-1/4 mb-6"></div>
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-gray-900/50 rounded-2xl border border-gray-800 p-6">
+                <div className="h-4 bg-gray-700 rounded w-1/2 mb-4"></div>
+                <div className="h-8 bg-gray-700 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-700 rounded w-1/3"></div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <>
+    <div className="max-w-7xl mx-auto p-6">
+      {/* Header */}
       <div className="mb-8">
-        <h2 className="text-3xl font-bold text-white mb-2">
-          Welcome back, {user?.name}!
-        </h2>
-        <p className="text-gray-300">
-          Here's your ClearRouter usage overview for the last 30 days
+        <h1 className="text-3xl font-bold text-white mb-2">
+          Welcome back, {user?.name || 'User'}!
+        </h1>
+        <p className="text-gray-400">
+          Here's an overview of your API usage and account status.
         </p>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
-          <p className="text-red-200">{error}</p>
+        <div className="mb-6 bg-red-900/50 backdrop-blur-sm rounded-2xl border border-red-800 p-4">
+          <p className="text-red-200 text-sm">{error}</p>
         </div>
       )}
 
@@ -132,7 +130,7 @@ const DashboardHome: React.FC = () => {
             </div>
           </div>
           <div className="text-3xl font-bold text-white mb-2">
-            {credits && credits.remaining_credits ? credits.remaining_credits.toLocaleString() : '0'}
+            {credits && credits.available_credits ? credits.available_credits.toLocaleString() : '0'}
           </div>
           <div className="text-sm text-gray-400">
             Available Balance
@@ -153,14 +151,14 @@ const DashboardHome: React.FC = () => {
             {stats && stats.total_requests ? stats.total_requests.toLocaleString() : '0'}
           </div>
           <div className="text-sm text-gray-400">
-            Last 30 days
+            API Calls Made
           </div>
         </div>
 
-        {/* Tokens Used */}
+        {/* Total Tokens */}
         <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-800 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-400 text-sm font-medium">Tokens Used</h3>
+            <h3 className="text-gray-400 text-sm font-medium">Total Tokens</h3>
             <div className="p-2 bg-purple-500/20 rounded-lg">
               <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -171,7 +169,7 @@ const DashboardHome: React.FC = () => {
             {stats && stats.total_tokens ? stats.total_tokens.toLocaleString() : '0'}
           </div>
           <div className="text-sm text-gray-400">
-            Last 30 days
+            Tokens Consumed
           </div>
         </div>
       </div>
@@ -187,8 +185,8 @@ const DashboardHome: React.FC = () => {
                 {stats.top_models.slice(0, 5).map((model: any, index: number) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
                     <div>
-                      <p className="text-white font-medium">{model.model || 'Unknown Model'}</p>
-                      <p className="text-sm text-gray-400">{model.requests || 0} requests</p>
+                      <p className="text-white font-medium">{model.model}</p>
+                      <p className="text-sm text-gray-400">{model.requests} requests</p>
                     </div>
                     <div className="text-right">
                       <p className="text-white font-medium">{model.tokens ? model.tokens.toLocaleString() : '0'}</p>
@@ -210,8 +208,8 @@ const DashboardHome: React.FC = () => {
                 {stats.top_providers.slice(0, 5).map((provider: any, index: number) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
                     <div>
-                      <p className="text-white font-medium capitalize">{provider.provider || 'Unknown Provider'}</p>
-                      <p className="text-sm text-gray-400">{provider.requests || 0} requests</p>
+                      <p className="text-white font-medium capitalize">{provider.provider}</p>
+                      <p className="text-sm text-gray-400">{provider.requests} requests</p>
                     </div>
                     <div className="text-right">
                       <p className="text-white font-medium">${provider.cost ? provider.cost.toFixed(4) : '0.0000'}</p>
@@ -292,7 +290,57 @@ const DashboardHome: React.FC = () => {
           </Link>
         </div>
       </div>
-    </>
+
+      {/* Features Overview */}
+      <div className="max-w-4xl mx-auto mt-12">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-white mb-4">
+            Everything you need to get started
+          </h2>
+          <p className="text-gray-400">
+            Powerful features to help you build amazing applications with AI.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-gray-900/30 backdrop-blur-sm rounded-xl border border-gray-800 p-6">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center mb-4">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-white mb-2">Lightning Fast</h3>
+            <p className="text-gray-400 text-sm">
+              Experience ultra-fast API responses with our optimized infrastructure.
+            </p>
+          </div>
+
+          <div className="bg-gray-900/30 backdrop-blur-sm rounded-xl border border-gray-800 p-6">
+            <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-green-700 rounded-lg flex items-center justify-center mb-4">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-white mb-2">Secure & Reliable</h3>
+            <p className="text-gray-400 text-sm">
+              Enterprise-grade security with 99.9% uptime guarantee.
+            </p>
+          </div>
+
+          <div className="bg-gray-900/30 backdrop-blur-sm rounded-xl border border-gray-800 p-6">
+            <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg flex items-center justify-center mb-4">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-white mb-2">Easy Integration</h3>
+            <p className="text-gray-400 text-sm">
+              Simple REST API with comprehensive documentation and SDKs.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

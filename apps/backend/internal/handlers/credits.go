@@ -7,8 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/hariomop12/clearrouter/apps/backend/internal/models"
 	"github.com/razorpay/razorpay-go"
@@ -226,6 +228,111 @@ func (h *CreditsHandler) GetCredits(c *gin.Context) {
 		"used_credits":      credits.UsedCredits,
 		"available_credits": credits.TotalCredits - credits.UsedCredits,
 	})
+}
+
+// VerifyPayment handles payment verification from frontend
+func (h *CreditsHandler) VerifyPayment(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var req struct {
+		RazorpayPaymentID string `json:"razorpay_payment_id" binding:"required"`
+		RazorpayOrderID   string `json:"razorpay_order_id"`
+		RazorpaySignature string `json:"razorpay_signature"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("Payment verification binding error: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
+		return
+	}
+
+	log.Printf("Payment verification request - Payment ID: %s, Order ID: %s, Signature: %s",
+		req.RazorpayPaymentID, req.RazorpayOrderID, req.RazorpaySignature)
+
+	// Check if this is a test mode payment (payment ID starts with pay_test)
+	isTestPayment := strings.HasPrefix(req.RazorpayPaymentID, "pay_test") || strings.HasPrefix(os.Getenv("RAZORPAY_key_id"), "rzp_test")
+
+	// For test payments, we might not always get order_id and signature
+	if isTestPayment && (req.RazorpayOrderID == "" || req.RazorpaySignature == "") {
+		log.Printf("Test mode payment detected, attempting to find order by payment ID")
+		// Try to find the most recent pending payment for this user
+		var payment models.Payment
+		if err := h.DB.Where("user_id = ? AND status = 'pending'", userID.(uuid.UUID)).Order("created_at DESC").First(&payment).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "No pending payment found"})
+			return
+		}
+		req.RazorpayOrderID = payment.RazorpayOrderID
+		log.Printf("Found matching order: %s", req.RazorpayOrderID)
+	} // Verify signature (skip for test mode if signature is missing)
+	if !isTestPayment || req.RazorpaySignature != "" {
+		generatedSignature := generateSignature(req.RazorpayOrderID, req.RazorpayPaymentID, os.Getenv("RAZORPAY_key_secret"))
+		if generatedSignature != req.RazorpaySignature {
+			log.Printf("Signature verification failed - Expected: %s, Got: %s", generatedSignature, req.RazorpaySignature)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payment signature"})
+			return
+		}
+		log.Printf("Signature verification successful")
+	} else {
+		log.Printf("Skipping signature verification for test mode payment")
+	}
+
+	// Update payment status
+	var payment models.Payment
+	if err := h.DB.Where("razorpay_order_id = ? AND user_id = ?", req.RazorpayOrderID, userID.(uuid.UUID)).First(&payment).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Payment not found"})
+		return
+	}
+
+	// Begin transaction
+	tx := h.DB.Begin()
+	if tx.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error starting transaction"})
+		return
+	}
+
+	// Update payment status
+	if err := tx.Model(&payment).Updates(map[string]interface{}{
+		"razorpay_payment_id": req.RazorpayPaymentID,
+		"status":              "completed",
+	}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating payment"})
+		return
+	}
+
+	// Add credits
+	credits := payment.Amount // 1 INR = 1 credit (adjust ratio as needed)
+	if err := tx.Exec(`
+		INSERT INTO credits (user_id, total_credits, used_credits)
+		VALUES (?, ?, 0)
+		ON CONFLICT (user_id) 
+		DO UPDATE SET total_credits = credits.total_credits + ?`,
+		userID.(uuid.UUID), credits, credits).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating credits"})
+		return
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error committing transaction"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Payment verified and credits added successfully"})
+}
+
+// Helper function to generate Razorpay signature for verification
+func generateSignature(orderID, paymentID, secret string) string {
+	message := orderID + "|" + paymentID
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(message))
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 // Helper function to verify Razorpay webhook signature

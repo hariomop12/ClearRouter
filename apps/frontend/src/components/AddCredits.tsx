@@ -11,7 +11,7 @@ interface CreditPackage {
 interface Credits {
   total_credits: number;
   used_credits: number;
-  remaining_credits: number;
+  available_credits: number;
 }
 
 const AddCredits: React.FC = () => {
@@ -48,11 +48,13 @@ const AddCredits: React.FC = () => {
 
       // Create Razorpay order
       const orderResponse = await api.post('/credits/order', {
-        amount: amount * 100, // Convert to paise
-        currency: 'INR'
+        amount: amount // Amount in INR, backend will convert to paise
       });
 
       const { id: order_id, amount: order_amount, currency } = orderResponse.data;
+      
+      // Store order_id for use in verification if needed
+      let storedOrderId = order_id;
 
       // Initialize Razorpay
       const options = {
@@ -64,19 +66,32 @@ const AddCredits: React.FC = () => {
         order_id: order_id,
         handler: async function (response: any) {
           try {
-            // Verify payment on backend
-            await api.post('/credits/add', {
+            console.log('Payment successful:', response);
+            console.log('Payment ID:', response.razorpay_payment_id);
+            console.log('Order ID:', response.razorpay_order_id);
+            console.log('Signature:', response.razorpay_signature);
+            
+            // For test mode, order_id and signature might be missing
+            // Use stored order_id if response doesn't have it
+            const verificationData = {
               razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_signature: response.razorpay_signature
-            });
+              razorpay_order_id: response.razorpay_order_id || storedOrderId,
+              razorpay_signature: response.razorpay_signature || ''
+            };
+            
+            console.log('Verification data:', verificationData);
+            
+            // Verify payment on backend
+            await api.post('/credits/verify', verificationData);
 
             // Refresh credits
             await fetchCredits();
             alert('Credits added successfully!');
-          } catch (err) {
+            setPurchasing(false);
+          } catch (err: any) {
             console.error('Payment verification failed:', err);
-            setError('Payment verification failed. Please contact support.');
+            setError(err.response?.data?.error || 'Payment verification failed. Please contact support if your payment was deducted.');
+            setPurchasing(false);
           }
         },
         prefill: {
@@ -93,6 +108,11 @@ const AddCredits: React.FC = () => {
         }
       };
 
+      // Check if Razorpay is available
+      if (!(window as any).Razorpay) {
+        throw new Error('Payment gateway not loaded. Please refresh the page and try again.');
+      }
+
       const razorpay = new (window as any).Razorpay(options);
       razorpay.open();
     } catch (err: any) {
@@ -105,15 +125,29 @@ const AddCredits: React.FC = () => {
   useEffect(() => {
     fetchCredits();
     
-    // Load Razorpay script
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    document.body.appendChild(script);
+    // Load Razorpay script safely
+    const loadRazorpayScript = () => {
+      return new Promise((resolve, reject) => {
+        // Check if script already exists
+        const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+        if (existingScript) {
+          resolve(true);
+          return;
+        }
 
-    return () => {
-      document.body.removeChild(script);
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        script.onload = () => resolve(true);
+        script.onerror = () => reject(new Error('Failed to load Razorpay script'));
+        document.body.appendChild(script);
+      });
     };
+
+    loadRazorpayScript().catch((err) => {
+      console.error('Error loading Razorpay:', err);
+      setError('Failed to load payment gateway. Please refresh the page.');
+    });
   }, []);
 
   return (
@@ -154,7 +188,7 @@ const AddCredits: React.FC = () => {
               <div className="text-sm text-gray-400">Used Credits</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-400">{credits.remaining_credits}</div>
+              <div className="text-3xl font-bold text-blue-400">{credits.available_credits}</div>
               <div className="text-sm text-gray-400">Available Credits</div>
             </div>
           </div>

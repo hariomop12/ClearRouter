@@ -85,9 +85,10 @@ func main() {
 	// Credits routes
 	credits := r.Group("/credits")
 	{
-		credits.POST("/order", authHandler.AuthMiddleware(), creditsHandler.CreateOrder) // Create order
-		credits.POST("/add", creditsHandler.AddCredits)                                  // Razorpay webhook
-		credits.GET("", authHandler.AuthMiddleware(), creditsHandler.GetCredits)         // Protected route
+		credits.POST("/order", authHandler.AuthMiddleware(), creditsHandler.CreateOrder)    // Create order
+		credits.POST("/verify", authHandler.AuthMiddleware(), creditsHandler.VerifyPayment) // Verify payment
+		credits.POST("/add", creditsHandler.AddCredits)                                     // Razorpay webhook
+		credits.GET("", authHandler.AuthMiddleware(), creditsHandler.GetCredits)            // Protected route
 	}
 	// Chat routes
 	v1 := r.Group("/v1")
