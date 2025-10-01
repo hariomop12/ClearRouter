@@ -375,6 +375,101 @@ func (h *ChatHandler) DashboardChatCompletions(c *gin.Context) {
 		return
 	}
 
+	// Persist chat and messages
+	// Determine or create chat associated with this completion
+	var chatID uuid.UUID
+	if req.ChatID != "" {
+		// Validate provided chat belongs to the user
+		parsedID, err := uuid.Parse(req.ChatID)
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid chat_id"})
+			return
+		}
+		var chat models.Chat
+		if err := tx.Where("id = ? AND user_id = ?", parsedID, userID.(uuid.UUID)).First(&chat).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusNotFound, gin.H{"error": "Chat not found or not owned by user"})
+			return
+		}
+		chatID = chat.ID
+	} else {
+		// Create a new chat using first user message as title (trimmed)
+		title := "New Chat"
+		if len(req.Messages) > 0 {
+			// Prefer last user message content if roles are present
+			for i := len(req.Messages) - 1; i >= 0; i-- {
+				if req.Messages[i].Content != "" { // minimal safeguard
+					title = req.Messages[i].Content
+					break
+				}
+			}
+			if len(title) > 60 {
+				title = title[:60]
+			}
+		}
+		newChat := models.Chat{
+			UserID:   userID.(uuid.UUID),
+			Title:    title,
+			Model:    req.Model,
+			Provider: providerID,
+		}
+		if err := tx.Create(&newChat).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating chat"})
+			return
+		}
+		chatID = newChat.ID
+	}
+
+	// Save last user message
+	var lastUserContent string
+	if len(req.Messages) > 0 {
+		// pick last message content
+		lastUserContent = req.Messages[len(req.Messages)-1].Content
+	}
+	if lastUserContent != "" {
+		userMsg := models.ChatHistoryMessage{
+			ChatID:     chatID,
+			Role:       "user",
+			Content:    lastUserContent,
+			TokenCount: resp.Usage.PromptTokens,
+			Cost:       inputCost,
+		}
+		if err := tx.Create(&userMsg).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error saving user message"})
+			return
+		}
+	}
+
+	// Save assistant message (from provider response)
+	var assistantContent string
+	if len(resp.Choices) > 0 && resp.Choices[0].Message != nil {
+		assistantContent = resp.Choices[0].Message.Content
+	}
+	if assistantContent != "" {
+		asstMsg := models.ChatHistoryMessage{
+			ChatID:     chatID,
+			Role:       "assistant",
+			Content:    assistantContent,
+			TokenCount: resp.Usage.CompletionTokens,
+			Cost:       outputCost,
+		}
+		if err := tx.Create(&asstMsg).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error saving assistant message"})
+			return
+		}
+	}
+
+	// Update chat updated_at
+	if err := tx.Model(&models.Chat{}).Where("id = ?", chatID).Update("updated_at", time.Now()).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating chat timestamp"})
+		return
+	}
+
 	// Log detailed API usage analytics
 	startTime := time.Now()
 	responseTime := int(time.Since(startTime).Milliseconds())

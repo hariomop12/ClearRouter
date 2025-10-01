@@ -106,6 +106,31 @@ const Chat: React.FC = () => {
     }
   };
 
+  const deleteChat = async (chatId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering selectChat
+    
+    if (!confirm('Are you sure you want to delete this chat? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/chathistory/${chatId}`);
+      
+      // If the deleted chat was currently selected, clear the messages
+      if (currentChatId === chatId) {
+        setMessages([]);
+        setCurrentChatId(null);
+      }
+      
+      // Refresh chat history
+      fetchChatHistory();
+      setError(null);
+    } catch (err) {
+      console.error('Error deleting chat:', err);
+      setError('Failed to delete chat');
+    }
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
@@ -186,20 +211,33 @@ const Chat: React.FC = () => {
           <div className="space-y-2">
             {Array.isArray(chatHistory) && chatHistory.length > 0 ? (
               chatHistory.map((chat) => (
-                <button
+                <div
                   key={chat.id}
-                  onClick={() => selectChat(chat.id)}
-                  className={`w-full text-left p-3 rounded-lg transition-colors ${
+                  className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
                     currentChatId === chat.id
                       ? 'bg-purple-600 text-white'
                       : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
                   }`}
                 >
-                  <div className="font-medium truncate">{chat.title}</div>
-                  <div className="text-sm text-gray-400 mt-1">
-                    {new Date(chat.updated_at).toLocaleDateString()}
-                  </div>
-                </button>
+                  <button
+                    onClick={() => selectChat(chat.id)}
+                    className="flex-1 text-left"
+                  >
+                    <div className="font-medium truncate">{chat.title}</div>
+                    <div className="text-sm text-gray-400 mt-1">
+                      {new Date(chat.updated_at).toLocaleDateString()}
+                    </div>
+                  </button>
+                  <button
+                    onClick={(e) => deleteChat(chat.id, e)}
+                    className="ml-2 p-1 hover:bg-red-500/20 rounded text-red-400 hover:text-red-300 transition-colors"
+                    title="Delete chat"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
               ))
             ) : (
               <div className="text-gray-500 text-sm p-3">

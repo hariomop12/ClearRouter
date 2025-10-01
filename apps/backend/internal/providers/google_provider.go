@@ -75,12 +75,12 @@ func (p *GoogleProvider) getActualModelName(modelID string) string {
 		"gemini-pro-latest":        "gemini-pro-latest",
 		"gemini-flash-lite-latest": "gemini-flash-lite-latest",
 		// Gemini 2.5 Series (Current Available Models)
-		"gemini-2.5-flash":                            "gemini-2.5-flash",
-		"gemini-2.5-flash-lite":                       "gemini-2.5-flash-lite",
-		"gemini-2.5-pro":                              "gemini-2.5-pro",
-		"gemini-2.5-flash-preview-09-2025":           "gemini-2.5-flash-preview-09-2025",
-		"gemini-2.5-flash-lite-preview-09-2025":      "gemini-2.5-flash-lite-preview-09-2025",
-		"gemini-2.5-flash-image-preview":             "gemini-2.5-flash-image-preview",
+		"gemini-2.5-flash":                      "gemini-2.5-flash",
+		"gemini-2.5-flash-lite":                 "gemini-2.5-flash-lite",
+		"gemini-2.5-pro":                        "gemini-2.5-pro",
+		"gemini-2.5-flash-preview-09-2025":      "gemini-2.5-flash-preview-09-2025",
+		"gemini-2.5-flash-lite-preview-09-2025": "gemini-2.5-flash-lite-preview-09-2025",
+		"gemini-2.5-flash-image-preview":        "gemini-2.5-flash-image-preview",
 		// Legacy Model Mappings (map old names to new available models)
 		"gemini-1.5-flash":    "gemini-2.5-flash",      // Map to closest available model
 		"gemini-1.5-pro":      "gemini-2.5-pro",        // Map to closest available model
@@ -101,6 +101,7 @@ type GoogleRequest struct {
 }
 
 type GoogleContent struct {
+	Role  string       `json:"role"`
 	Parts []GooglePart `json:"parts"`
 }
 
@@ -144,7 +145,16 @@ func (p *GoogleProvider) CreateChatCompletion(ctx context.Context, req *models.C
 	// Convert messages to Google format
 	var contents []GoogleContent
 	for _, msg := range req.Messages {
+		// Map OpenAI roles to Google roles
+		googleRole := "user" // default
+		if msg.Role == "assistant" {
+			googleRole = "model"
+		} else if msg.Role == "user" {
+			googleRole = "user"
+		}
+
 		content := GoogleContent{
+			Role: googleRole,
 			Parts: []GooglePart{
 				{Text: msg.Content},
 			},
