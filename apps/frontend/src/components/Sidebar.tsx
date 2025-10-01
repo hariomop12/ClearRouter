@@ -1,5 +1,31 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+
+const UserInfoSection: React.FC = () => {
+  const { state } = useAuth();
+  const { user } = state;
+
+  return (
+    <div className="px-4 py-4 border-t border-gray-800">
+      <div className="flex items-center space-x-3 p-3 bg-gray-800/50 rounded-lg">
+        <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-sm font-bold text-white">
+            {user?.name?.charAt(0).toUpperCase()}
+          </span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-white truncate">
+            {user?.name}
+          </p>
+          <p className="text-xs text-gray-400 truncate">
+            {user?.email}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
@@ -7,6 +33,7 @@ const Sidebar: React.FC = () => {
     { name: 'Dashboard', path: '/dashboard', icon: '🏠' },
     { name: 'API Keys', path: '/dashboard/keys', icon: '🔑' },
     { name: 'Chat', path: '/dashboard/chat', icon: '💬' },
+    { name: 'Models', path: '/dashboard/models', icon: '🤖' },
     { name: 'Add Credits', path: '/dashboard/credits', icon: '💰' },
   ];
 
@@ -27,6 +54,9 @@ const Sidebar: React.FC = () => {
           </Link>
         ))}
       </nav>
+      
+      {/* User Info Section */}
+      <UserInfoSection />
     </aside>
   );
 };

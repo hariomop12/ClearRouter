@@ -33,6 +33,7 @@ function App() {
             <Route index element={<DashboardHome />} />
             <Route path="keys" element={<ApiKeys />} />
             <Route path="chat" element={<Chat />} />
+            <Route path="models" element={<Models />} />
             <Route path="credits" element={<AddCredits />} />
           </Route>
         </Routes>
