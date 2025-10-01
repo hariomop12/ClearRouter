@@ -96,6 +96,12 @@ func main() {
 		v1.POST("/chat/completions", chatHandler.ChatCompletions)
 	}
 
+	// Dashboard Chat routes (protected with JWT)
+	dashboardChat := r.Group("/", authHandler.AuthMiddleware())
+	{
+		dashboardChat.POST("/chat", chatHandler.DashboardChatCompletions)
+	}
+
 	// Chat History routes (protected)
 	chatHistory := r.Group("/", authHandler.AuthMiddleware())
 	{

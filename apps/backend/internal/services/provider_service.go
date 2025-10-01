@@ -37,6 +37,20 @@ func (s *ProviderService) GetProvider(name string) (ChatProvider, error) {
 	return provider, nil
 }
 
+// GetProviderForModel finds the provider that handles a specific model
+func (s *ProviderService) GetProviderForModel(modelName string) (ChatProvider, error) {
+	allModels := models.GetAllModels()
+	for _, m := range allModels {
+		if m.ID == modelName {
+			if len(m.Providers) > 0 {
+				providerID := m.Providers[0].ProviderID
+				return s.GetProvider(providerID)
+			}
+		}
+	}
+	return nil, fmt.Errorf("no provider found for model %s", modelName)
+}
+
 // GetModelInfo returns the model pricing info
 func (s *ProviderService) GetModelInfo(provider, model string) (*models.ProviderModel, error) {
 	allModels := models.GetAllModels()

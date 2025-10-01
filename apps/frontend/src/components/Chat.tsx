@@ -18,13 +18,23 @@ interface Model {
   }>;
 }
 
+interface ChatHistory {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash-lite');
+  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash');
   const [models, setModels] = useState<Model[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -37,6 +47,7 @@ const Chat: React.FC = () => {
 
   useEffect(() => {
     fetchModels();
+    fetchChatHistory();
   }, []);
 
   const fetchModels = async () => {
@@ -46,6 +57,52 @@ const Chat: React.FC = () => {
     } catch (err) {
       console.error('Error fetching models:', err);
       setError('Failed to load models');
+    }
+  };
+
+  const fetchChatHistory = async () => {
+    try {
+      const response = await api.get('/chathistory');
+      console.log('Chat history response:', response.data);
+      // The API returns { chats: [], total_count: ..., page: ..., page_size: ... }
+      const chats = response.data?.chats;
+      setChatHistory((chats && Array.isArray(chats)) ? chats : []);
+    } catch (err) {
+      console.error('Error fetching chat history:', err);
+      setChatHistory([]); // Set empty array on error
+    }
+  };
+
+  const createNewChat = async () => {
+    try {
+      const response = await api.post('/newchat', {
+        title: 'New Chat',
+        model: 'gemini-2.0-flash', // Default model
+        provider: 'google'
+      });
+      setCurrentChatId(response.data.id);
+      setMessages([]);
+      setError(null);
+      fetchChatHistory();
+    } catch (err) {
+      console.error('Error creating new chat:', err);
+    }
+  };
+
+  const selectChat = async (chatId: string) => {
+    try {
+      const response = await api.get(`/chathistory/${chatId}`);
+      setCurrentChatId(chatId);
+      // Convert the stored messages to our Message format
+      const chatMessages = response.data.messages.map((msg: any) => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: new Date(msg.timestamp || Date.now())
+      }));
+      setMessages(chatMessages);
+      setError(null);
+    } catch (err) {
+      console.error('Error loading chat:', err);
     }
   };
 
@@ -64,7 +121,7 @@ const Chat: React.FC = () => {
     setError(null);
 
     try {
-      const response = await api.post('/v1/chat/completions', {
+      const response = await api.post('/chat', {
         model: selectedModel,
         messages: [
           ...messages.map(msg => ({ role: msg.role, content: msg.content })),
@@ -72,9 +129,20 @@ const Chat: React.FC = () => {
         ]
       });
 
+      // Handle both actual AI response and placeholder response
+      let content = '';
+      if (response.data.choices && response.data.choices[0] && response.data.choices[0].message) {
+        content = response.data.choices[0].message.content;
+      } else if (response.data.message) {
+        // Handle placeholder response
+        content = response.data.message + (response.data.note ? '\n\n' + response.data.note : '');
+      } else {
+        content = 'Sorry, I received an unexpected response format.';
+      }
+
       const assistantMessage: Message = {
         role: 'assistant',
-        content: response.data.choices[0].message.content,
+        content: content,
         timestamp: new Date()
       };
 
@@ -101,34 +169,87 @@ const Chat: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto h-[calc(100vh-200px)] flex flex-col">
-      <div className="mb-6">
-        <h2 className="text-3xl font-bold text-white mb-4">AI Chat</h2>
-        <p className="text-gray-300">Chat with different AI models through ClearRouter</p>
+    <div className="flex h-[calc(100vh-120px)]">
+      {/* Sidebar */}
+      <div className={`${sidebarOpen ? 'w-80' : 'w-0'} transition-all duration-300 overflow-hidden bg-gray-900 border-r border-gray-700`}>
+        <div className="p-4 border-b border-gray-700">
+          <button
+            onClick={createNewChat}
+            className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg transition-all"
+          >
+            + New Chat
+          </button>
+        </div>
+        
+        <div className="p-4">
+          <h3 className="text-white font-semibold mb-3">Chat History</h3>
+          <div className="space-y-2">
+            {Array.isArray(chatHistory) && chatHistory.length > 0 ? (
+              chatHistory.map((chat) => (
+                <button
+                  key={chat.id}
+                  onClick={() => selectChat(chat.id)}
+                  className={`w-full text-left p-3 rounded-lg transition-colors ${
+                    currentChatId === chat.id
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+                  }`}
+                >
+                  <div className="font-medium truncate">{chat.title}</div>
+                  <div className="text-sm text-gray-400 mt-1">
+                    {new Date(chat.updated_at).toLocaleDateString()}
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="text-gray-500 text-sm p-3">
+                No chat history yet
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Model Selection */}
-      <div className="mb-6 flex items-center space-x-4">
-        <label className="text-sm font-medium text-gray-300">Model:</label>
-        <select
-          value={selectedModel}
-          onChange={(e) => setSelectedModel(e.target.value)}
-          className="bg-gray-800 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-        >
-          {models.map(model => (
-            <option key={model.id} value={model.id}>
-              {model.name} ({model.family})
-            </option>
-          ))}
-        </select>
-
-        <button
-          onClick={clearChat}
-          className="ml-auto px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
-        >
-          Clear Chat
-        </button>
-      </div>
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="flex justify-between items-center p-4 border-b border-gray-700">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <div>
+              <h2 className="text-2xl font-bold text-white">AI Chat</h2>
+              <p className="text-sm text-gray-300">Chat with AI models</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="bg-gray-800 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              {models.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name}
+                </option>
+              ))}
+            </select>
+            
+            <button
+              onClick={clearChat}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+            >
+              Clear Chat
+            </button>
+          </div>
+        </div>
 
       {error && (
         <div className="mb-4 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
@@ -214,6 +335,7 @@ const Chat: React.FC = () => {
               )}
             </button>
           </div>
+        </div>
         </div>
       </div>
     </div>
