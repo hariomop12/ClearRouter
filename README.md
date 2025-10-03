@@ -5,7 +5,8 @@ Full-Stack AI Chat Service built with Go, React, and PostgreSQL in a monorepo ar
 ## Features
 
 ### Backend (Go + Gin)
-- 🤖 AI Chat API with multiple providers (OpenAI, Google)
+- 🤖 AI Chat API with multiple providers (OpenAI, Google, Anthropic, Mistral, DeepSeek)
+- 🧠 66+ AI models including GPT-4, Claude, Gemini, Mistral, and DeepSeek
 - 🔐 JWT Authentication
 - 💳 Credit-based usage system
 - 🔑 API Key management
@@ -237,19 +238,48 @@ cd apps/backend && go test -cover ./...
 
 ## Environment Variables
 
-Key environment variables:
+Copy `.env.example` to `.env` and configure the following variables:
 
 ```bash
-# Backend
+# Database Configuration
 DATABASE_URL=postgres://clearrouter:clearrouter_pass@localhost:5432/clearrouter?sslmode=disable
-JWT_SECRET=your-secret-key
-OPENAI_API_KEY=your-openai-key
-GOOGLE_API_KEY=your-google-key
+
+# Application Configuration
 GIN_MODE=debug
+GORM_DEBUG=true
+JWT_SECRET=your-secret-key
+
+# AI Provider API Keys
+OPENAI_API_KEY=your-openai-key                    # Required for GPT models
+GOOGLE_API_KEY=your-google-key                    # Required for Gemini models
+ANTHROPIC_API_KEY=your-anthropic-key              # Required for Claude models
+DEEPSEEK_API_KEY=your-deepseek-key                # Required for DeepSeek models
+MISTRAL_API_KEY=your-mistral-key                  # Required for Mistral/Mixtral models
+
+# Payment Configuration (Razorpay)
+RAZORPAY_KEY_ID=your-razorpay-key
+RAZORPAY_KEY_SECRET=your-razorpay-secret
+RAZORPAY_WEBHOOK_SECRET=your-webhook-secret
+
+# Email Configuration (SMTP)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-email-app-password
+SMTP_FROM_EMAIL=your-email@gmail.com
+SMTP_REPLY_TO_EMAIL=your-email@gmail.com
 
 # Frontend
 VITE_API_URL=http://localhost:8080
 ```
+
+### How to Get API Keys
+
+- **OpenAI**: Get your API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+- **Google**: Create a project in [Google Cloud Console](https://console.cloud.google.com/) and enable Gemini API
+- **Anthropic**: Get your API key from [Anthropic Console](https://console.anthropic.com/)
+- **DeepSeek**: Sign up at [DeepSeek Platform](https://platform.deepseek.com/)
+- **Mistral**: Get your API key from [Mistral AI Platform](https://console.mistral.ai/)
 
 ## Deployment
 
