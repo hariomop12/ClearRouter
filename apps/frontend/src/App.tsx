@@ -10,6 +10,7 @@ import ApiKeys from './components/ApiKeys';
 import Chat from './components/Chat';
 import AddCredits from './components/AddCredits';
 import Models from './components/Models';
+import Settings from './components/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
 
 
@@ -35,6 +36,8 @@ function App() {
             <Route path="chat" element={<Chat />} />
             <Route path="models" element={<Models />} />
             <Route path="credits" element={<AddCredits />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
       </Router>

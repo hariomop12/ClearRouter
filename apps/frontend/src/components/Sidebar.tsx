@@ -35,6 +35,7 @@ const Sidebar: React.FC = () => {
     { name: 'Chat', path: '/dashboard/chat', icon: '💬' },
     { name: 'Models', path: '/dashboard/models', icon: '🤖' },
     { name: 'Add Credits', path: '/dashboard/credits', icon: '💰' },
+    { name: 'Settings', path: '/dashboard/settings', icon: '⚙️' },
   ];
 
   return (

@@ -21,6 +21,7 @@ type AuthAction =
   | { type: 'SIGNUP_FAILURE'; payload: string }
   | { type: 'LOGOUT' }
   | { type: 'CLEAR_ERROR' }
+  | { type: 'UPDATE_USER'; payload: User }
   | { type: 'RESTORE_AUTH'; payload: { user: User; token: string } };
 
 // ----------------- Auth context interface -----------------
@@ -30,6 +31,7 @@ interface AuthContextType {
   signup: (userData: SignupRequest) => Promise<void>;
   logout: () => void;
   clearError: () => void;
+  updateUser: (user: User) => void;
 }
 
 // ----------------- Initial state -----------------
@@ -68,6 +70,12 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 
     case 'CLEAR_ERROR':
       return { ...state, error: null };
+
+    case 'UPDATE_USER':
+      return {
+        ...state,
+        user: action.payload,
+      };
 
     case 'RESTORE_AUTH':
       return {
@@ -165,6 +173,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatch({ type: 'CLEAR_ERROR' });
   }, []);
 
+  // ----------------- Update User -----------------
+  const updateUser = useCallback((updatedUser: User) => {
+    // Update localStorage
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    // Update context state
+    dispatch({ type: 'UPDATE_USER', payload: updatedUser });
+  }, []);
+
   // Context value
   const value: AuthContextType = {
     state,
@@ -172,6 +188,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signup,
     logout,
     clearError,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

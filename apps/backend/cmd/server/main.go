@@ -74,6 +74,13 @@ func main() {
 		auth.POST("/login", authHandler.Login)
 	}
 
+	// User management routes (protected)
+	user := r.Group("/user", authHandler.AuthMiddleware())
+	{
+		user.PUT("/username", authHandler.UpdateUsername)
+		user.DELETE("/account", authHandler.DeleteAccount)
+	}
+
 	// Protected API Key routes
 	keys := r.Group("/keys", authHandler.AuthMiddleware())
 	{

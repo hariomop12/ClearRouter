@@ -26,6 +26,10 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+type UpdateUsernameRequest struct {
+	Name string `json:"name" binding:"required,min=2,max=255"`
+}
+
 func NewAuthHandler(db *gorm.DB) *AuthHandler {
 	return &AuthHandler{db: db}
 }
@@ -169,4 +173,113 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 		c.Set("userID", claims.UserID)
 		c.Next()
 	}
+}
+
+// UpdateUsername handles username change requests
+func (h *AuthHandler) UpdateUsername(c *gin.Context) {
+	var req UpdateUsernameRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get user ID from context (set by AuthMiddleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	// Update user's name
+	var user models.User
+	if err := h.db.First(&user, "id = ?", userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Update the name
+	user.Name = req.Name
+	if err := h.db.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update username"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Username updated successfully",
+		"user": gin.H{
+			"id":    user.ID,
+			"name":  user.Name,
+			"email": user.Email,
+		},
+	})
+}
+
+// DeleteAccount handles account deletion requests
+func (h *AuthHandler) DeleteAccount(c *gin.Context) {
+	// Get user ID from context (set by AuthMiddleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	// Start a transaction for safe deletion
+	tx := h.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Delete user's API keys first (foreign key constraint)
+	if err := tx.Where("user_id = ?", userID).Delete(&models.APIKey{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user data"})
+		return
+	}
+
+	// Delete user's credits
+	if err := tx.Where("user_id = ?", userID).Delete(&models.Credits{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user data"})
+		return
+	}
+
+	// Delete user's chat history and messages
+	if err := tx.Where("user_id = ?", userID).Delete(&models.Chat{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user data"})
+		return
+	}
+
+	// Delete user's usage logs
+	if err := tx.Exec("DELETE FROM api_usage_logs WHERE user_id = ?", userID).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user data"})
+		return
+	}
+
+	// Delete user's analytics data
+	if err := tx.Exec("DELETE FROM api_usage_analytics WHERE user_id = ?", userID).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user data"})
+		return
+	}
+
+	// Finally, delete the user
+	if err := tx.Where("id = ?", userID).Delete(&models.User{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user account"})
+		return
+	}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to complete account deletion"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Account deleted successfully",
+	})
 }

@@ -147,9 +147,10 @@ func (p *GoogleProvider) CreateChatCompletion(ctx context.Context, req *models.C
 	for _, msg := range req.Messages {
 		// Map OpenAI roles to Google roles
 		googleRole := "user" // default
-		if msg.Role == "assistant" {
+		switch msg.Role {
+		case "assistant":
 			googleRole = "model"
-		} else if msg.Role == "user" {
+		case "user":
 			googleRole = "user"
 		}
 

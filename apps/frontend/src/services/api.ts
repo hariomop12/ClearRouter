@@ -80,6 +80,19 @@ export const authAPI = {
   }
 };
 
+// User API calls
+export const userAPI = {
+  updateUsername: async (name: string): Promise<{message: string, user: User}> => {
+    const response = await api.put('/user/username', { name });
+    return response.data;
+  },
+
+  deleteAccount: async (): Promise<{message: string}> => {
+    const response = await api.delete('/user/account');
+    return response.data;
+  }
+};
+
 // Helper functions
 export const setAuthToken = (token: string) => {
   localStorage.setItem('token', token);
