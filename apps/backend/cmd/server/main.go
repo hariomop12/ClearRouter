@@ -55,6 +55,9 @@ func main() {
 	providerService := services.NewProviderService()
 	providerService.RegisterProvider(providers.NewOpenAIProvider())
 	providerService.RegisterProvider(providers.NewGoogleProvider())
+	providerService.RegisterProvider(providers.NewAnthropicProvider())
+	providerService.RegisterProvider(providers.NewDeepSeekProvider())
+	providerService.RegisterProvider(providers.NewMistralProvider())
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(db)

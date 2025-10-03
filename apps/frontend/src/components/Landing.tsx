@@ -21,6 +21,12 @@ const Landing: React.FC = () => {
                 Models
               </Link>
               <Link
+                to="/info"
+                className="text-gray-300 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                Info
+              </Link>
+              <Link
                 to="/login"
                 className="text-gray-300 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
               >

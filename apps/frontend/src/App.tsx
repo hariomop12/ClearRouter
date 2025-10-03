@@ -11,6 +11,7 @@ import Chat from './components/Chat';
 import AddCredits from './components/AddCredits';
 import Models from './components/Models';
 import Settings from './components/Settings';
+import Info from './components/Info';
 import ProtectedRoute from './components/ProtectedRoute';
 
 
@@ -23,6 +24,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/models" element={<Models />} />
+          <Route path="/info" element={<Info />} />
           <Route
             path="/dashboard"
             element={
