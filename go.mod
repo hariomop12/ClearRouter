@@ -1,6 +1,6 @@
 module github.com/hariomop12/clearrouter
 
-go 1.24.0
+go 1.24.1
 
 toolchain go1.24.4
 
@@ -16,7 +16,11 @@ require (
 	gorm.io/gorm v1.30.0
 )
 
-require github.com/mattn/go-sqlite3 v1.14.22 // indirect
+require (
+	github.com/mattn/go-sqlite3 v1.14.22 // indirect
+	github.com/sendgrid/rest v2.6.9+incompatible // indirect
+	github.com/sendgrid/sendgrid-go v3.16.1+incompatible // indirect
+)
 
 require (
 	github.com/bytedance/sonic v1.13.3 // indirect

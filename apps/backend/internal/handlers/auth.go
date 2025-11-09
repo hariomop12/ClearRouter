@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -50,8 +49,9 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 
 	// Create new user
 	user := models.User{
-		Name:  req.Name,
-		Email: req.Email,
+		Name:          req.Name,
+		Email:         req.Email,
+		EmailVerified: true, // TODO: Temporarily setting users as verified by default
 	}
 	if err := user.HashPassword(req.Password); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error hashing password"})
@@ -64,21 +64,19 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 		return
 	}
 
-	// Generate verification token
-	token, err := utils.GenerateEmailVerificationToken(user.ID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating verification token"})
-		return
-	}
-
-	// Send verification email
-	if err := utils.SendVerificationEmail(user.Email, token); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error sending verification email: %v", err)})
-		return
-	}
+	// TODO: Email verification temporarily disabled
+	// token, err := utils.GenerateEmailVerificationToken(user.ID)
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating verification token"})
+	// 	return
+	// }
+	// if err := utils.SendVerificationEmail(user.Email, token); err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error sending verification email: %v", err)})
+	// 	return
+	// }
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message": "User created successfully. Please check your email for verification.",
+		"message": "User created successfully.",
 	})
 }
 
@@ -128,10 +126,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	if !user.EmailVerified {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Email not verified"})
-		return
-	}
+	// TODO: Email verification check temporarily disabled
+	// if !user.EmailVerified {
+	// 	c.JSON(http.StatusForbidden, gin.H{"error": "Email not verified"})
+	// 	return
+	// }
 
 	token, err := utils.GenerateJWT(user.ID, user.Email)
 	if err != nil {

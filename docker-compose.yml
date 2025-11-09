@@ -1,40 +1,41 @@
-services:
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_USER: clearrouter
-      POSTGRES_PASSWORD: clearrouter_pass
-      POSTGRES_DB: clearrouter
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U clearrouter"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+version: '3.8'
 
+services:
   backend:
+    container_name: clearrouter-backend
     build:
       context: .
-      dockerfile: ./apps/backend/Dockerfile.prod
+      dockerfile: Dockerfile.backend
+    restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
-      DATABASE_URL: "postgres://clearrouter:clearrouter_pass@postgres:5432/clearrouter?sslmode=disable"
-    depends_on:
-      postgres:
-        condition: service_healthy
+      DATABASE_URL: "postgresql://postgres:bL735U6L3S2Q9iPB@db.mphgbpaitzdncedvovzz.supabase.co:5432/postgres?sslmode=require"
+      NODE_ENV: "production"
+      PORT: "8080"
+    extra_hosts:
+      - "db.mphgbpaitzdncedvovzz.supabase.co:34.132.72.40"?sslmode=require
+    networks:
+      - clear-router-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   frontend:
+    container_name: clearrouter-frontend
     build:
       context: .
-      dockerfile: ./apps/frontend/Dockerfile
+      dockerfile: Dockerfile.frontend
+    restart: unless-stopped
     ports:
       - "3000:80"
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_API_URL=http://localhost:8080
     depends_on:
       - backend
+    networks:
+      - clear-router-network
 
-volumes:
-  pgdata:
+networks:
+  clear-router-network:
+    driver: bridge

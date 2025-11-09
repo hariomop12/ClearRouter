@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
- 	"github.com/gin-contrib/cors"
+
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
@@ -22,6 +23,18 @@ func main() {
 	// In production, environment variables are provided by Docker
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using environment variables")
+	}
+
+	// Debug: Test SMTP environment variables
+	vars := []string{"SMTP_HOST", "SMTP_PORT", "API_KEY", "SMTP_FROM_EMAIL"}
+	fmt.Println("\nTesting SMTP Environment Variables:")
+	for _, v := range vars {
+		val := os.Getenv(v)
+		if val != "" {
+			fmt.Printf("%s is set (length: %d)\n", v, len(val))
+		} else {
+			fmt.Printf("%s is NOT set\n", v)
+		}
 	}
 
 	// Database connection
