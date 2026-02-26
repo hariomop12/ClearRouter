@@ -1,5 +1,3 @@
-\restrict jfXek5vpbTJLkpAdaSbLBDsj5ofeajCupMzowW3kBlD5ecF7YzX8EWGPO7biYjT
-
 -- Dumped from database version 15.14
 -- Dumped by pg_dump version 17.6
 
@@ -396,17 +394,3 @@ ALTER TABLE ONLY public.payments
 --
 -- PostgreSQL database dump complete
 --
-
-\unrestrict jfXek5vpbTJLkpAdaSbLBDsj5ofeajCupMzowW3kBlD5ecF7YzX8EWGPO7biYjT
-
-
---
--- Dbmate schema migrations
---
-
-INSERT INTO public.schema_migrations (version) VALUES
-    ('20250927072843'),
-    ('20250927101618'),
-    ('20250927102719'),
-    ('20250927192900'),
-    ('20250928134500');

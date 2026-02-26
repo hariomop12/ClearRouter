@@ -11,6 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/razorpay/razorpay-go v1.4.0
+	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
 	golang.org/x/crypto v0.39.0
 	gorm.io/driver/postgres v1.5.4
 	gorm.io/gorm v1.30.0
@@ -19,7 +20,6 @@ require (
 require (
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
-	github.com/sendgrid/sendgrid-go v3.16.1+incompatible // indirect
 )
 
 require (

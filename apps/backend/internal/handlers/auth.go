@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -64,19 +65,29 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 		return
 	}
 
-	// TODO: Email verification temporarily disabled
-	// token, err := utils.GenerateEmailVerificationToken(user.ID)
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating verification token"})
-	// 	return
-	// }
-	// if err := utils.SendVerificationEmail(user.Email, token); err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error sending verification email: %v", err)})
-	// 	return
-	// }
+	fmt.Printf("[SIGNUP] User created successfully. ID: %d, Email: %s\n", user.ID, user.Email)
+
+	// Generate and send verification email
+	fmt.Println("[SIGNUP] Generating email verification token...")
+	token, err := utils.GenerateEmailVerificationToken(user.ID)
+	if err != nil {
+		fmt.Printf("[SIGNUP] Error generating verification token: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error generating verification token"})
+		return
+	}
+	fmt.Printf("[SIGNUP] Token generated successfully: %s\n", token)
+
+	fmt.Printf("[SIGNUP] Sending verification email to: %s\n", user.Email)
+	if err := utils.SendVerificationEmail(user.Email, token); err != nil {
+		fmt.Printf("[SIGNUP] Error sending verification email: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error sending verification email: %v", err)})
+		return
+	}
+
+	fmt.Printf("[SIGNUP] Verification email sent successfully to: %s\n", user.Email)
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message": "User created successfully.",
+		"message": "User created successfully. Verification email has been sent.",
 	})
 }
 

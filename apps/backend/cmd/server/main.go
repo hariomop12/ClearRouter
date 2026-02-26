@@ -26,7 +26,7 @@ func main() {
 	}
 
 	// Debug: Test SMTP environment variables
-	vars := []string{"SMTP_HOST", "SMTP_PORT", "API_KEY", "SMTP_FROM_EMAIL"}
+	vars := []string{"SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM_EMAIL"}
 	fmt.Println("\nTesting SMTP Environment Variables:")
 	for _, v := range vars {
 		val := os.Getenv(v)
@@ -87,6 +87,8 @@ func main() {
 		auth.POST("/signup", authHandler.Signup)
 		auth.GET("/verify", authHandler.Verify)
 		auth.POST("/login", authHandler.Login)
+		// convenience alias for clients using 'signin'
+		auth.POST("/signin", authHandler.Login)
 	}
 
 	// User management routes (protected)

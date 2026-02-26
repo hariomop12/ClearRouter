@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     container_name: clearrouter-backend
@@ -10,15 +8,21 @@ services:
     ports:
       - "8080:8080"
     environment:
-      DATABASE_URL: "postgresql://postgres:bL735U6L3S2Q9iPB@db.mphgbpaitzdncedvovzz.supabase.co:5432/postgres?sslmode=require"
+      DATABASE_URL: "postgresql://postgres:postgres@db:5432/clearrouter?sslmode=disable"
       NODE_ENV: "production"
       PORT: "8080"
-    extra_hosts:
-      - "db.mphgbpaitzdncedvovzz.supabase.co:34.132.72.40"?sslmode=require
+      SMTP_HOST: "smtp.gmail.com"
+      SMTP_PORT: "587"
+      SMTP_USERNAME: "hariomvirkhare02@gmail.com"
+      SMTP_PASSWORD: "gknujkbqpejezupg"
+      SMTP_FROM_EMAIL: "hariomvirkhare02@gmail.com"
+      environment:
+      GOOGLE_API_KEY: "AIzaSyCFecmihaU_4AZ8WIVYBCddrg_plmYTAVI"
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - clear-router-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   frontend:
     container_name: clearrouter-frontend
@@ -36,6 +40,30 @@ services:
     networks:
       - clear-router-network
 
+  db:
+    container_name: clearrouter-db
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: clearrouter
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - clear-router-network
+
 networks:
   clear-router-network:
     driver: bridge
+
+volumes:
+  postgres_data:

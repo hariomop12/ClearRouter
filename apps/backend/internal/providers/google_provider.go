@@ -24,6 +24,9 @@ func NewGoogleProvider() *GoogleProvider {
 	if apiKey == "" {
 		// Return a provider but log the error - don't panic on startup
 		fmt.Printf("[WARNING] GOOGLE_API_KEY environment variable is not set\n")
+	} else {
+		// log length only to avoid leaking the key
+		fmt.Printf("[INFO] GOOGLE_API_KEY is set (length=%d)\n", len(apiKey))
 	}
 
 	return &GoogleProvider{
@@ -202,6 +205,12 @@ func (p *GoogleProvider) CreateChatCompletion(ctx context.Context, req *models.C
 
 	// Check for HTTP errors
 	if resp.StatusCode != http.StatusOK {
+		// log body for debugging
+		fmt.Printf("[GOOGLE] request failed status=%d body=%s\n", resp.StatusCode, string(responseBody))
+		// specialized message for common invalid key error
+		if resp.StatusCode == 400 && bytes.Contains(responseBody, []byte("API key not found")) {
+			return nil, fmt.Errorf("google API key invalid or service not enabled: check GOOGLE_API_KEY and enable generativelanguage.googleapis.com")
+		}
 		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(responseBody))
 	}
 
