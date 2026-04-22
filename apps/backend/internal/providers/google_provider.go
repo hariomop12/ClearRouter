@@ -57,6 +57,8 @@ func (p *GoogleProvider) GetSupportedModels() []string {
 		"gemini-flash-latest",
 		"gemini-pro-latest",
 		"gemini-flash-lite-latest",
+		// Gemini 3.x Series (Latest)
+		"gemini-3-flash-preview",
 		// Gemini 2.5 Series (Current Available Models)
 		"gemini-2.5-flash",
 		"gemini-2.5-flash-lite",
@@ -77,6 +79,8 @@ func (p *GoogleProvider) getActualModelName(modelID string) string {
 		"gemini-flash-latest":      "gemini-flash-latest",
 		"gemini-pro-latest":        "gemini-pro-latest",
 		"gemini-flash-lite-latest": "gemini-flash-lite-latest",
+		// Gemini 3.x Series (Latest)
+		"gemini-3-flash-preview": "gemini-3-flash-preview",
 		// Gemini 2.5 Series (Current Available Models)
 		"gemini-2.5-flash":                      "gemini-2.5-flash",
 		"gemini-2.5-flash-lite":                 "gemini-2.5-flash-lite",
@@ -116,24 +120,37 @@ type GooglePart struct {
 type GoogleResponse struct {
 	Candidates    []GoogleCandidate   `json:"candidates"`
 	UsageMetadata GoogleUsageMetadata `json:"usageMetadata"`
+	ModelVersion  string              `json:"modelVersion,omitempty"`
+	ResponseID    string              `json:"responseId,omitempty"`
 }
 
 type GoogleCandidate struct {
-	Content GoogleResponseContent `json:"content"`
+	Content      GoogleResponseContent `json:"content"`
+	FinishReason string                `json:"finishReason,omitempty"`
+	Index        int                   `json:"index,omitempty"`
 }
 
 type GoogleResponseContent struct {
 	Parts []GoogleResponsePart `json:"parts"`
+	Role  string              `json:"role,omitempty"`
 }
 
 type GoogleResponsePart struct {
-	Text string `json:"text"`
+	Text             string `json:"text,omitempty"`
+	ThoughtSignature string `json:"thoughtSignature,omitempty"`
 }
 
 type GoogleUsageMetadata struct {
-	PromptTokenCount     int `json:"promptTokenCount"`
-	CandidatesTokenCount int `json:"candidatesTokenCount"`
-	TotalTokenCount      int `json:"totalTokenCount"`
+	PromptTokenCount      int               `json:"promptTokenCount"`
+	CandidatesTokenCount  int               `json:"candidatesTokenCount"`
+	TotalTokenCount       int               `json:"totalTokenCount"`
+	ThoughtsTokenCount    int               `json:"thoughtsTokenCount,omitempty"`
+	PromptTokensDetails   []TokenDetail     `json:"promptTokensDetails,omitempty"`
+}
+
+type TokenDetail struct {
+	Modality   string `json:"modality,omitempty"`
+	TokenCount int    `json:"tokenCount,omitempty"`
 }
 
 func (p *GoogleProvider) CreateChatCompletion(ctx context.Context, req *models.ChatCompletionsRequest) (*models.ChatCompletionsResponse, error) {
@@ -219,6 +236,19 @@ func (p *GoogleProvider) CreateChatCompletion(ctx context.Context, req *models.C
 	if err := json.Unmarshal(responseBody, &googleResp); err != nil {
 		return nil, fmt.Errorf("error parsing response: %v", err)
 	}
+
+	// Log response details for debugging
+	fmt.Printf("[GOOGLE] Response received - Model: %s, Version: %s, Candidates: %d, Response ID: %s\n",
+		req.Model, googleResp.ModelVersion, len(googleResp.Candidates), googleResp.ResponseID)
+	if len(googleResp.Candidates) > 0 {
+		fmt.Printf("[GOOGLE] First candidate - FinishReason: %s, Parts: %d\n",
+			googleResp.Candidates[0].FinishReason, len(googleResp.Candidates[0].Content.Parts))
+	}
+	fmt.Printf("[GOOGLE] Token usage - Prompt: %d, Completion: %d, Total: %d, Thoughts: %d\n",
+		googleResp.UsageMetadata.PromptTokenCount,
+		googleResp.UsageMetadata.CandidatesTokenCount,
+		googleResp.UsageMetadata.TotalTokenCount,
+		googleResp.UsageMetadata.ThoughtsTokenCount)
 
 	// Extract response text
 	var responseText string

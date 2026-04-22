@@ -7,7 +7,7 @@ ADD COLUMN currency VARCHAR(10) DEFAULT 'INR';
 CREATE TABLE api_usage_analytics (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL,
-  api_key_id UUID NOT NULL,
+  api_key_id UUID,
   request_id VARCHAR(255) NOT NULL,
   model_requested VARCHAR(255) NOT NULL,
   model_used VARCHAR(255) NOT NULL,

@@ -474,10 +474,19 @@ func (h *ChatHandler) DashboardChatCompletions(c *gin.Context) {
 	startTime := time.Now()
 	responseTime := int(time.Since(startTime).Milliseconds())
 
+	// Get APIKeyID if authenticated via API key
+	var apiKeyID *string
+	if authType, exists := c.Get("authType"); exists && authType == "apikey" {
+		if keyID, exists := c.Get("apiKeyID"); exists {
+			keyIDStr := keyID.(uuid.UUID).String()
+			apiKeyID = &keyIDStr
+		}
+	}
+
 	usageAnalytics := models.APIUsageAnalytics{
 		ID:                  uuid.NewString(),
 		UserID:              userID.(uuid.UUID).String(),
-		APIKeyID:            nil, // No API key for dashboard usage
+		APIKeyID:            apiKeyID, // Set if authenticated via API key
 		RequestID:           resp.ID,
 		ModelRequested:      req.Model,
 		ModelUsed:           req.Model,

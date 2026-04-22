@@ -17,7 +17,7 @@ services:
       SMTP_PASSWORD: "gknujkbqpejezupg"
       SMTP_FROM_EMAIL: "hariomvirkhare02@gmail.com"
       environment:
-      GOOGLE_API_KEY: "AIzaSyCFecmihaU_4AZ8WIVYBCddrg_plmYTAVI"
+      GOOGLE_API_KEY: "AIzaSyApH0056cpcVtUS9qg6mLse83F3ROIz8xo"
     depends_on:
       db:
         condition: service_healthy

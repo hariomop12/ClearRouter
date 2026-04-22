@@ -158,7 +158,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	})
 }
 
-// AuthMiddleware returns a Gin middleware function that checks for valid JWT tokens
+// AuthMiddleware returns a Gin middleware function that checks for valid JWT tokens or API keys
 func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -168,19 +168,36 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Extract the token
+		// Extract the token/key (remove "Bearer " prefix)
+		if len(authHeader) <= 7 {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization header"})
+			c.Abort()
+			return
+		}
 		tokenString := authHeader[7:] // Remove "Bearer " prefix
 
-		// Verify the token
+		// First, try to verify as JWT token
 		claims, err := utils.VerifyToken(tokenString)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		if err == nil {
+			// JWT is valid, set user ID and continue
+			c.Set("userID", claims.UserID)
+			c.Set("authType", "jwt")
+			c.Next()
+			return
+		}
+
+		// JWT verification failed, try API key authentication
+		var apiKey models.APIKey
+		if err := h.db.Where("api_key = ? AND active = true", tokenString).First(&apiKey).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token or API key"})
 			c.Abort()
 			return
 		}
 
-		// Set user ID in context
-		c.Set("userID", claims.UserID)
+		// API key is valid, set user ID and continue
+		c.Set("userID", apiKey.UserID)
+		c.Set("authType", "apikey")
+		c.Set("apiKeyID", apiKey.ID)
 		c.Next()
 	}
 }

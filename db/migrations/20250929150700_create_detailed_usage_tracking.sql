@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS api_usage_analytics (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    api_key_id UUID NOT NULL REFERENCES api_keys(id) ON DELETE CASCADE,
+    api_key_id UUID NULL REFERENCES api_keys(id) ON DELETE CASCADE,
     
     -- Request Details
     request_id VARCHAR(255) NOT NULL,
