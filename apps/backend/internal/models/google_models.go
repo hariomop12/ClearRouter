@@ -1,6 +1,26 @@
 package models
 
 var GoogleModels = []ModelDefinition{
+	// Gemini 3.x Series
+	{
+		ID:         "gemini-3-flash-preview",
+		Name:       "Gemini 3 Flash Preview",
+		Family:     "google",
+		JSONOutput: true,
+		Providers: []ProviderModel{
+			{
+				ProviderID:  "google",
+				ModelName:   "gemini-3-flash-preview",
+				InputPrice:  0.3 / 1e6,
+				OutputPrice: 2.5 / 1e6,
+				ContextSize: 1000000,
+				MaxOutput:   8192,
+				Streaming:   true,
+				Vision:      true,
+				Tools:       true,
+			},
+		},
+	},
 	// Gemini 1.5 Series
 	{
 		ID:         "gemini-1.5-flash",
@@ -165,8 +185,8 @@ var GoogleModels = []ModelDefinition{
 			{
 				ProviderID:  "google",
 				ModelName:   "gemini-2.5-flash",
-				InputPrice:  0.3 / 1e6,  // $0.3 per 1M tokens
-				OutputPrice: 2.5 / 1e6,  // $2.5 per 1M tokens
+				InputPrice:  0.3 / 1e6, // $0.3 per 1M tokens
+				OutputPrice: 2.5 / 1e6, // $2.5 per 1M tokens
 				ContextSize: 1000000,
 				MaxOutput:   8192,
 				Streaming:   true,
@@ -241,8 +261,8 @@ var GoogleModels = []ModelDefinition{
 			{
 				ProviderID:  "google",
 				ModelName:   "gemini-2.5-flash-preview-09-2025",
-				InputPrice:  0.3 / 1e6,  // $0.3 per 1M tokens
-				OutputPrice: 2.5 / 1e6,  // $2.5 per 1M tokens
+				InputPrice:  0.3 / 1e6, // $0.3 per 1M tokens
+				OutputPrice: 2.5 / 1e6, // $2.5 per 1M tokens
 				ContextSize: 1000000,
 				MaxOutput:   8192,
 				Streaming:   true,

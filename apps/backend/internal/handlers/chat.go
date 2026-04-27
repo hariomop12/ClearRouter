@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,6 +17,38 @@ import (
 type ChatHandler struct {
 	DB              *gorm.DB
 	ProviderService *services.ProviderService
+}
+
+func providerHTTPStatus(err error) int {
+	if err == nil {
+		return http.StatusOK
+	}
+	msg := err.Error()
+
+	// Common provider-side rate limit / quota errors
+	if strings.Contains(msg, "status 429") ||
+		strings.Contains(msg, "\"code\": 429") ||
+		strings.Contains(msg, "RESOURCE_EXHAUSTED") {
+		return http.StatusTooManyRequests
+	}
+
+	// Common invalid-request/auth errors (surface as 400 in our API)
+	if strings.Contains(msg, "status 400") ||
+		strings.Contains(msg, "\"code\": 400") ||
+		strings.Contains(msg, "INVALID_ARGUMENT") ||
+		strings.Contains(msg, "API_KEY_INVALID") {
+		return http.StatusBadRequest
+	}
+
+	if strings.Contains(msg, "status 401") || strings.Contains(msg, "\"code\": 401") {
+		return http.StatusUnauthorized
+	}
+
+	if strings.Contains(msg, "status 403") || strings.Contains(msg, "\"code\": 403") {
+		return http.StatusForbidden
+	}
+
+	return http.StatusInternalServerError
 }
 
 func NewChatHandler(db *gorm.DB, providerService *services.ProviderService) *ChatHandler {
@@ -98,7 +131,7 @@ func (h *ChatHandler) ChatCompletions(c *gin.Context) {
 	// Create chat completion
 	resp, err := provider.CreateChatCompletion(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error from provider: %v", err)})
+		c.JSON(providerHTTPStatus(err), gin.H{"error": fmt.Sprintf("Error from provider: %v", err)})
 		return
 	}
 
@@ -302,12 +335,12 @@ func (h *ChatHandler) DashboardChatCompletions(c *gin.Context) {
 	providerID := models.GetProviderFromModel(req.Model)
 	if providerID == "" {
 		// Fallback to a default model
-		providerID = models.GetProviderFromModel("gemini-2.0-flash")
+		providerID = models.GetProviderFromModel("gemini-3-flash-preview")
 		if providerID == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Model not supported"})
 			return
 		}
-		req.Model = "gemini-2.0-flash" // Use fallback model
+		req.Model = "gemini-3-flash-preview" // Use fallback model
 	}
 
 	// Get provider instance
@@ -348,7 +381,7 @@ func (h *ChatHandler) DashboardChatCompletions(c *gin.Context) {
 	// Create chat completion
 	resp, err := provider.CreateChatCompletion(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error from provider: %v", err)})
+		c.JSON(providerHTTPStatus(err), gin.H{"error": fmt.Sprintf("Error from provider: %v", err)})
 		return
 	}
 

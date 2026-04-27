@@ -51,19 +51,24 @@ const AddCredits: React.FC = () => {
         amount: amount // Amount in INR, backend will convert to paise
       });
 
-      const { id: order_id, amount: order_amount, currency } = orderResponse.data;
+      const { id, order_id, amount: orderAmount, currency, key, key_id } = orderResponse.data;
+      const resolvedOrderId = id || order_id;
+      const resolvedKey = key || key_id;
+      if (!resolvedOrderId || !resolvedKey) {
+        throw new Error('Invalid order response from server');
+      }
       
       // Store order_id for use in verification if needed
-      let storedOrderId = order_id;
+      let storedOrderId = resolvedOrderId;
 
       // Initialize Razorpay
       const options = {
-        key: 'rzp_test_RMdWZKqulEGpGi', // Your Razorpay key ID
-        amount: order_amount,
+        key: resolvedKey,
+        amount: orderAmount,
         currency: currency,
         name: 'ClearRouter',
         description: `Purchase ${creditPackages.find(pkg => pkg.amount === amount)?.credits} credits`,
-        order_id: order_id,
+        order_id: resolvedOrderId,
         handler: async function (response: any) {
           try {
             console.log('Payment successful:', response);

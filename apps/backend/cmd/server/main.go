@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -18,12 +19,40 @@ import (
 	"github.com/hariomop12/clearrouter/apps/backend/internal/services"
 )
 
-func main() {
-	// Load .env file if it exists (development mode)
-	// In production, environment variables are provided by Docker
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using environment variables")
+func loadEnv() {
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Println("Unable to get working directory, skipping .env lookup")
+		return
 	}
+
+	candidates := []string{
+		"apps/backend/.env",
+		".env",
+		"../.env",
+		"../../.env",
+		"../../../.env",
+	}
+
+	for _, rel := range candidates {
+		path := rel
+		if !filepath.IsAbs(rel) {
+			path = filepath.Clean(filepath.Join(wd, rel))
+		}
+		if _, statErr := os.Stat(path); statErr != nil {
+			continue
+		}
+		if loadErr := godotenv.Load(path); loadErr == nil {
+			log.Printf("Loaded env file: %s", path)
+			return
+		}
+	}
+
+	log.Println("No .env file found, using environment variables")
+}
+
+func main() {
+	loadEnv()
 
 	// Debug: Test SMTP environment variables
 	vars := []string{"SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM_EMAIL"}
@@ -146,6 +175,7 @@ func main() {
 
 	// Public routes
 	r.GET("/models", handlers.GetModelsHandler)
+	r.GET("/health", healthHandler.SuperHealth)
 	r.GET("/health/super", healthHandler.SuperHealth)
 
 	// API Key-based analytics (no JWT required)

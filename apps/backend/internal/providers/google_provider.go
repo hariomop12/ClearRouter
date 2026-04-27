@@ -20,13 +20,18 @@ type GoogleProvider struct {
 }
 
 func NewGoogleProvider() *GoogleProvider {
+	// Support both names: many users export GEMINI_API_KEY for curl examples,
+	// while the app historically used GOOGLE_API_KEY.
 	apiKey := os.Getenv("GOOGLE_API_KEY")
 	if apiKey == "" {
+		apiKey = os.Getenv("GEMINI_API_KEY")
+	}
+	if apiKey == "" {
 		// Return a provider but log the error - don't panic on startup
-		fmt.Printf("[WARNING] GOOGLE_API_KEY environment variable is not set\n")
+		fmt.Printf("[WARNING] GOOGLE_API_KEY (or GEMINI_API_KEY) environment variable is not set\n")
 	} else {
 		// log length only to avoid leaking the key
-		fmt.Printf("[INFO] GOOGLE_API_KEY is set (length=%d)\n", len(apiKey))
+		fmt.Printf("[INFO] Google API key is set (length=%d)\n", len(apiKey))
 	}
 
 	return &GoogleProvider{
@@ -88,6 +93,9 @@ func (p *GoogleProvider) getActualModelName(modelID string) string {
 		"gemini-2.5-flash-preview-09-2025":      "gemini-2.5-flash-preview-09-2025",
 		"gemini-2.5-flash-lite-preview-09-2025": "gemini-2.5-flash-lite-preview-09-2025",
 		"gemini-2.5-flash-image-preview":        "gemini-2.5-flash-image-preview",
+		// Gemini 2.0 Series (map to a currently-usable model by default)
+		"gemini-2.0-flash":      "gemini-3-flash-preview",
+		"gemini-2.0-flash-lite": "gemini-3-flash-preview",
 		// Legacy Model Mappings (map old names to new available models)
 		"gemini-1.5-flash":    "gemini-2.5-flash",      // Map to closest available model
 		"gemini-1.5-pro":      "gemini-2.5-pro",        // Map to closest available model
@@ -132,7 +140,7 @@ type GoogleCandidate struct {
 
 type GoogleResponseContent struct {
 	Parts []GoogleResponsePart `json:"parts"`
-	Role  string              `json:"role,omitempty"`
+	Role  string               `json:"role,omitempty"`
 }
 
 type GoogleResponsePart struct {
@@ -141,11 +149,11 @@ type GoogleResponsePart struct {
 }
 
 type GoogleUsageMetadata struct {
-	PromptTokenCount      int               `json:"promptTokenCount"`
-	CandidatesTokenCount  int               `json:"candidatesTokenCount"`
-	TotalTokenCount       int               `json:"totalTokenCount"`
-	ThoughtsTokenCount    int               `json:"thoughtsTokenCount,omitempty"`
-	PromptTokensDetails   []TokenDetail     `json:"promptTokensDetails,omitempty"`
+	PromptTokenCount     int           `json:"promptTokenCount"`
+	CandidatesTokenCount int           `json:"candidatesTokenCount"`
+	TotalTokenCount      int           `json:"totalTokenCount"`
+	ThoughtsTokenCount   int           `json:"thoughtsTokenCount,omitempty"`
+	PromptTokensDetails  []TokenDetail `json:"promptTokensDetails,omitempty"`
 }
 
 type TokenDetail struct {

@@ -7,6 +7,8 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+    env_file:
+      - ./apps/backend/.env
     environment:
       DATABASE_URL: "postgresql://postgres:postgres@db:5432/clearrouter?sslmode=disable"
       NODE_ENV: "production"
@@ -16,8 +18,6 @@ services:
       SMTP_USERNAME: "hariomvirkhare02@gmail.com"
       SMTP_PASSWORD: "gknujkbqpejezupg"
       SMTP_FROM_EMAIL: "hariomvirkhare02@gmail.com"
-      environment:
-      GOOGLE_API_KEY: "AIzaSyApH0056cpcVtUS9qg6mLse83F3ROIz8xo"
     depends_on:
       db:
         condition: service_healthy

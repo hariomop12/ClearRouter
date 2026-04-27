@@ -29,7 +29,7 @@ const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash');
+  const [selectedModel, setSelectedModel] = useState('gemini-3-flash-preview');
   const [models, setModels] = useState<Model[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
@@ -77,7 +77,7 @@ const Chat: React.FC = () => {
     try {
       const response = await api.post('/newchat', {
         title: 'New Chat',
-        model: 'gemini-2.0-flash', // Default model
+        model: 'gemini-3-flash-preview', // Default model
         provider: 'google'
       });
       setCurrentChatId(response.data.id);

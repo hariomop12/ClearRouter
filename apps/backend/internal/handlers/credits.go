@@ -24,6 +24,15 @@ type CreditsHandler struct {
 	DB *gorm.DB
 }
 
+func firstEnv(keys ...string) string {
+	for _, k := range keys {
+		if v := strings.TrimSpace(os.Getenv(k)); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 // NewCreditsHandler creates a new CreditsHandler instance
 func NewCreditsHandler(db *gorm.DB) *CreditsHandler {
 	return &CreditsHandler{DB: db}
@@ -48,8 +57,15 @@ func (h *CreditsHandler) CreateOrder(c *gin.Context) {
 		return
 	}
 
+	keyID := firstEnv("RAZORPAY_KEY_ID", "RAZORPAY_key_id")
+	keySecret := firstEnv("RAZORPAY_KEY_SECRET", "RAZORPAY_key_secret")
+	if keyID == "" || keySecret == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Razorpay credentials are not configured"})
+		return
+	}
+
 	// Initialize Razorpay client
-	client := razorpay.NewClient(os.Getenv("RAZORPAY_key_id"), os.Getenv("RAZORPAY_key_secret"))
+	client := razorpay.NewClient(keyID, keySecret)
 
 	// Convert amount to paise (Razorpay uses smallest currency unit)
 	amountInPaise := int64(req.Amount * 100)
@@ -87,10 +103,15 @@ func (h *CreditsHandler) CreateOrder(c *gin.Context) {
 
 	// Return order details to client
 	c.JSON(http.StatusOK, gin.H{
-		"order_id": order["id"],
-		"amount":   req.Amount,
+		// preferred fields (frontend)
+		"id":       order["id"],
+		"amount":   amountInPaise,
 		"currency": "INR",
-		"key_id":   os.Getenv("RAZORPAY_key_id"),
+		"key":      keyID,
+
+		// backwards-compatible aliases
+		"order_id": order["id"],
+		"key_id":   keyID,
 	})
 }
 
@@ -121,7 +142,7 @@ type RazorpayWebhookRequest struct {
 // AddCredits handles the Razorpay webhook for adding credits
 func (h *CreditsHandler) AddCredits(c *gin.Context) {
 	// Get Razorpay webhook secret from environment
-	webhookSecret := os.Getenv("RAZORPAY_WEBHOOK_SECRET")
+	webhookSecret := firstEnv("RAZORPAY_WEBHOOK_SECRET")
 
 	// Verify Razorpay signature
 	signature := c.GetHeader("X-Razorpay-Signature")
@@ -253,13 +274,42 @@ func (h *CreditsHandler) VerifyPayment(c *gin.Context) {
 	log.Printf("Payment verification request - Payment ID: %s, Order ID: %s, Signature: %s",
 		req.RazorpayPaymentID, req.RazorpayOrderID, req.RazorpaySignature)
 
-	// Check if this is a test mode payment (payment ID starts with pay_test)
-	isTestPayment := strings.HasPrefix(req.RazorpayPaymentID, "pay_test") || strings.HasPrefix(os.Getenv("RAZORPAY_key_id"), "rzp_test")
+	keyID := firstEnv("RAZORPAY_KEY_ID", "RAZORPAY_key_id")
+	keySecret := firstEnv("RAZORPAY_KEY_SECRET", "RAZORPAY_key_secret")
 
-	// For test payments, we might not always get order_id and signature
-	if isTestPayment && (req.RazorpayOrderID == "" || req.RazorpaySignature == "") {
+	// Check if this is a test mode payment (payment ID starts with pay_test)
+	isTestPayment := strings.HasPrefix(req.RazorpayPaymentID, "pay_test") || strings.HasPrefix(keyID, "rzp_test")
+
+	if keyID == "" || keySecret == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Razorpay credentials are not configured"})
+		return
+	}
+
+	// Always prefer order_id from Razorpay (prevents mismatches if multiple pending orders exist).
+	client := razorpay.NewClient(keyID, keySecret)
+	shouldFetchPayment := req.RazorpayOrderID == "" || req.RazorpaySignature != ""
+	if shouldFetchPayment {
+		paymentEntity, err := client.Payment.Fetch(req.RazorpayPaymentID, nil, nil)
+		if err != nil {
+			log.Printf("Unable to fetch payment details from Razorpay: %v", err)
+			if req.RazorpayOrderID == "" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Missing razorpay_order_id"})
+				return
+			}
+		} else {
+			if oid, ok := paymentEntity["order_id"].(string); ok && oid != "" {
+				req.RazorpayOrderID = oid
+			}
+			if status, ok := paymentEntity["status"].(string); ok && status != "" && status != "captured" && status != "authorized" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Payment not successful", "status": status})
+				return
+			}
+		}
+	}
+
+	// For test payments, we might not always get order_id and/or signature; fall back to DB only if needed.
+	if isTestPayment && req.RazorpayOrderID == "" {
 		log.Printf("Test mode payment detected, attempting to find order by payment ID")
-		// Try to find the most recent pending payment for this user
 		var payment models.Payment
 		if err := h.DB.Where("user_id = ? AND status = 'pending'", userID.(uuid.UUID)).Order("created_at DESC").First(&payment).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "No pending payment found"})
@@ -267,9 +317,16 @@ func (h *CreditsHandler) VerifyPayment(c *gin.Context) {
 		}
 		req.RazorpayOrderID = payment.RazorpayOrderID
 		log.Printf("Found matching order: %s", req.RazorpayOrderID)
-	} // Verify signature (skip for test mode if signature is missing)
+	}
+
+	if req.RazorpayOrderID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing razorpay_order_id"})
+		return
+	}
+
+	// Verify signature (skip for test mode only if signature is missing)
 	if !isTestPayment || req.RazorpaySignature != "" {
-		generatedSignature := generateSignature(req.RazorpayOrderID, req.RazorpayPaymentID, os.Getenv("RAZORPAY_key_secret"))
+		generatedSignature := generateSignature(req.RazorpayOrderID, req.RazorpayPaymentID, keySecret)
 		if generatedSignature != req.RazorpaySignature {
 			log.Printf("Signature verification failed - Expected: %s, Got: %s", generatedSignature, req.RazorpaySignature)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payment signature"})
@@ -284,6 +341,11 @@ func (h *CreditsHandler) VerifyPayment(c *gin.Context) {
 	var payment models.Payment
 	if err := h.DB.Where("razorpay_order_id = ? AND user_id = ?", req.RazorpayOrderID, userID.(uuid.UUID)).First(&payment).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Payment not found"})
+		return
+	}
+
+	if payment.Status == "completed" {
+		c.JSON(http.StatusOK, gin.H{"message": "Payment already verified"})
 		return
 	}
 
