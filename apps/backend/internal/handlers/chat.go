@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -59,6 +60,8 @@ func NewChatHandler(db *gorm.DB, providerService *services.ProviderService) *Cha
 }
 
 func (h *ChatHandler) ChatCompletions(c *gin.Context) {
+	requestStart := time.Now()
+
 	// Get API key from header
 	apiKey := c.GetHeader("Authorization")
 	if apiKey == "" || len(apiKey) < 8 {
@@ -152,8 +155,7 @@ func (h *ChatHandler) ChatCompletions(c *gin.Context) {
 	}
 
 	// Log detailed API usage analytics
-	startTime := time.Now()
-	responseTime := int(time.Since(startTime).Milliseconds())
+	responseTime := int(time.Since(requestStart).Milliseconds())
 
 	apiKeyStr := key.ID.String()
 	usageAnalytics := models.APIUsageAnalytics{
@@ -191,16 +193,19 @@ func (h *ChatHandler) ChatCompletions(c *gin.Context) {
 		Currency:     utils.GetCurrency(),
 	}
 
-	// Create both usage logs
-	if err := tx.Create(&usageLog).Error; err != nil {
-		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error logging usage"})
-		return
+	// Best-effort logging: schema mismatches shouldn't fail the request.
+	// Use savepoints so a failed INSERT doesn't abort the entire transaction in Postgres.
+	if err := tx.SavePoint("sp_usage_log").Error; err == nil {
+		if err := tx.Create(&usageLog).Error; err != nil {
+			_ = tx.RollbackTo("sp_usage_log").Error
+			log.Printf("usage log insert failed: %v", err)
+		}
 	}
-	if err := tx.Create(&usageAnalytics).Error; err != nil {
-		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error logging analytics"})
-		return
+	if err := tx.SavePoint("sp_usage_analytics").Error; err == nil {
+		if err := tx.Create(&usageAnalytics).Error; err != nil {
+			_ = tx.RollbackTo("sp_usage_analytics").Error
+			log.Printf("usage analytics insert failed: %v", err)
+		}
 	}
 
 	// Update credits
@@ -317,6 +322,8 @@ func (h *ChatHandler) ChatCompletions(c *gin.Context) {
 
 // DashboardChatCompletions handles chat completions from the dashboard (JWT auth)
 func (h *ChatHandler) DashboardChatCompletions(c *gin.Context) {
+	requestStart := time.Now()
+
 	// Get user ID from JWT middleware
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -504,8 +511,7 @@ func (h *ChatHandler) DashboardChatCompletions(c *gin.Context) {
 	}
 
 	// Log detailed API usage analytics
-	startTime := time.Now()
-	responseTime := int(time.Since(startTime).Milliseconds())
+	responseTime := int(time.Since(requestStart).Milliseconds())
 
 	// Get APIKeyID if authenticated via API key
 	var apiKeyID *string
@@ -537,10 +543,12 @@ func (h *ChatHandler) DashboardChatCompletions(c *gin.Context) {
 		Currency:            utils.GetCurrency(),
 	}
 
-	if err := tx.Create(&usageAnalytics).Error; err != nil {
-		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error logging usage analytics"})
-		return
+	// Best-effort logging (same rationale as API key flow).
+	if err := tx.SavePoint("sp_dashboard_usage_analytics").Error; err == nil {
+		if err := tx.Create(&usageAnalytics).Error; err != nil {
+			_ = tx.RollbackTo("sp_dashboard_usage_analytics").Error
+			log.Printf("dashboard usage analytics insert failed: %v", err)
+		}
 	}
 
 	if err := tx.Commit().Error; err != nil {

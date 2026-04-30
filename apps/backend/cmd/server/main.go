@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
+	"github.com/hariomop12/clearrouter/apps/backend/internal/dbmigrate"
 	"github.com/hariomop12/clearrouter/apps/backend/internal/handlers"
 	"github.com/hariomop12/clearrouter/apps/backend/internal/providers"
 	"github.com/hariomop12/clearrouter/apps/backend/internal/seed"
@@ -76,6 +77,9 @@ func main() {
 
 	// Schema is managed by SQL migrations in /db/migrations/
 	// No AutoMigrate needed here
+	if err := dbmigrate.EnsureUsageTracking(db); err != nil {
+		log.Printf("DB schema check (usage tracking) failed: %v", err)
+	}
 
 	// Seed default user (idempotent)
 	seed.SeedDefaultUser(db)
