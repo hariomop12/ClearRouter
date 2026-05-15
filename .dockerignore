@@ -43,6 +43,8 @@ temp/
 .env
 .env.local
 .env.*.local
+apps/**/.env
+apps/**/.env.*
 
 # Documentation
 README.md

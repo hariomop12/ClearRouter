@@ -1,5 +1,8 @@
 services:
   backend:
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     container_name: clearrouter-backend
     build:
       context: .
@@ -25,22 +28,28 @@ services:
       - clear-router-network
 
   frontend:
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     container_name: clearrouter-frontend
     build:
       context: .
       dockerfile: Dockerfile.frontend
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "3002:80"
     environment:
       - NODE_ENV=production
-      - REACT_APP_API_URL=http://localhost:8080
+      - REACT_APP_API_URL=http://localhost:8081
     depends_on:
       - backend
     networks:
       - clear-router-network
 
   db:
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     container_name: clearrouter-db
     image: postgres:15-alpine
     restart: unless-stopped
