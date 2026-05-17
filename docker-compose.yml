@@ -1,51 +1,22 @@
 services:
   backend:
     container_name: clearrouter-backend
-
     build:
       context: .
       dockerfile: Dockerfile.backend
-
-    restart: unless-stopped
-
     ports:
       - "8080:8080"
-
-    env_file:
-      - ./apps/backend/.env
-
-    environment:
-      NODE_ENV: "production"
-      PORT: "8080"
-      GIN_MODE: "release"
-
     networks:
       - clear-router-network
-
 
   frontend:
     container_name: clearrouter-frontend
-
     build:
       context: .
       dockerfile: Dockerfile.frontend
-
-    restart: unless-stopped
-
     ports:
       - "3002:80"
-
-    environment:
-      NODE_ENV: "production"
-      REACT_APP_API_URL: "/api"
-
     depends_on:
       - backend
-
     networks:
       - clear-router-network
-
-
-networks:
-  clear-router-network:
-    driver: bridge
