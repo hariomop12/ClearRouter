@@ -264,8 +264,9 @@ RAZORPAY_WEBHOOK_SECRET=your-webhook-secret
 # Email Configuration (SMTP)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-email-app-password
+# Use either SMTP_USERNAME/SMTP_PASSWORD or SMTP_USER/SMTP_PASS
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-email-app-password
 SMTP_FROM_EMAIL=your-email@gmail.com
 SMTP_REPLY_TO_EMAIL=your-email@gmail.com
 

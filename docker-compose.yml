@@ -20,3 +20,7 @@ services:
       - backend
     networks:
       - clear-router-network
+
+networks:
+  clear-router-network:
+    driver: bridge

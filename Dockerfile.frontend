@@ -19,11 +19,14 @@ RUN npm run build:frontend
 # Production stage
 FROM nginx:alpine
 
+# Select which nginx config template to bake into the image
+ARG NGINX_TEMPLATE=nginx.conf
+
 # Copy built assets from builder
 COPY --from=builder /app/apps/frontend/dist /usr/share/nginx/html
 
-# Copy nginx config
-COPY --from=builder /app/nginx.conf /etc/nginx/conf.d/default.conf
+# Copy nginx config template (envsubst runs automatically in nginx image entrypoint)
+COPY --from=builder /app/${NGINX_TEMPLATE} /etc/nginx/templates/default.conf.template
 
 # Expose nginx port
 EXPOSE 80

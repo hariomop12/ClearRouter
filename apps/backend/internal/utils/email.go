@@ -12,8 +12,8 @@ import (
 func SendVerificationEmail(email, token string) error {
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpPort := os.Getenv("SMTP_PORT")
-	smtpUsername := os.Getenv("SMTP_USERNAME")
-	smtpPassword := os.Getenv("SMTP_PASSWORD")
+	smtpUsername := firstNonEmptyEnv("SMTP_USERNAME", "SMTP_USER")
+	smtpPassword := firstNonEmptyEnv("SMTP_PASSWORD", "SMTP_PASS")
 	fromEmail := os.Getenv("SMTP_FROM_EMAIL")
 
 	fmt.Println("[EMAIL] === Email Configuration Check ===")
@@ -90,10 +90,10 @@ func SendVerificationEmail(email, token string) error {
 		fmt.Printf("[EMAIL] ERROR: Failed to send email: %v\n", err)
 		fmt.Printf("[EMAIL] Error Type: %T\n", err)
 		fmt.Printf("[EMAIL] Error String: %s\n", err.Error())
-		
-		// Try alternative method with explicit TLS dialer
-		fmt.Println("[EMAIL] === Trying alternative method with explicit TLS client ===")
-		err2 := sendEmailWithTLSClient(addr, auth, fromEmail, email, msg, tlsConfig)
+
+		// Try alternative method with an explicit client + STARTTLS/implicit TLS
+		fmt.Println("[EMAIL] === Trying alternative method with explicit SMTP client ===")
+		err2 := sendEmailWithSMTPClient(addr, smtpHost, smtpPort, auth, fromEmail, email, msg, tlsConfig)
 		if err2 != nil {
 			fmt.Printf("[EMAIL] ERROR: Alternative method also failed: %v\n", err2)
 			return fmt.Errorf("failed to send email (both methods): standard: %w, tls-explicit: %w", err, err2)
@@ -106,78 +106,95 @@ func SendVerificationEmail(email, token string) error {
 	return nil
 }
 
-// sendEmailWithTLSClient sends email using explicit TLS client
-func sendEmailWithTLSClient(addr string, auth smtp.Auth, from, to, msg string, tlsConfig *tls.Config) error {
-	fmt.Println("[EMAIL-TLS] Initiating TLS connection...")
-	
-	conn, err := tls.Dial("tcp", addr, tlsConfig)
+func sendEmailWithSMTPClient(addr, smtpHost, smtpPort string, auth smtp.Auth, from, to, msg string, tlsConfig *tls.Config) error {
+	// Port 465 is implicit TLS. Port 587 is plaintext then STARTTLS.
+	if smtpPort == "465" {
+		fmt.Println("[EMAIL-TLS] Connecting with implicit TLS (port 465)...")
+		conn, err := tls.Dial("tcp", addr, tlsConfig)
+		if err != nil {
+			fmt.Printf("[EMAIL-TLS] ERROR: TLS dial failed: %v\n", err)
+			return err
+		}
+		defer conn.Close()
+
+		client, err := smtp.NewClient(conn, smtpHost)
+		if err != nil {
+			fmt.Printf("[EMAIL-TLS] ERROR: SMTP client creation failed: %v\n", err)
+			return err
+		}
+		defer client.Close()
+
+		return smtpClientSend(client, auth, from, to, msg)
+	}
+
+	fmt.Println("[EMAIL-STARTTLS] Connecting in plaintext then upgrading with STARTTLS...")
+	conn, err := net.DialTimeout("tcp", addr, 10*time.Second)
 	if err != nil {
-		fmt.Printf("[EMAIL-TLS] ERROR: TLS dial failed: %v\n", err)
+		fmt.Printf("[EMAIL-STARTTLS] ERROR: TCP dial failed: %v\n", err)
 		return err
 	}
 	defer conn.Close()
 
-	fmt.Println("[EMAIL-TLS] ✓ TLS connection established")
-
-	// Create a new client from the connection
-	client, err := smtp.NewClient(conn, addr)
+	client, err := smtp.NewClient(conn, smtpHost)
 	if err != nil {
-		fmt.Printf("[EMAIL-TLS] ERROR: SMTP client creation failed: %v\n", err)
+		fmt.Printf("[EMAIL-STARTTLS] ERROR: SMTP client creation failed: %v\n", err)
 		return err
 	}
 	defer client.Close()
 
-	fmt.Println("[EMAIL-TLS] ✓ SMTP client created")
+	if ok, _ := client.Extension("STARTTLS"); ok {
+		if err := client.StartTLS(tlsConfig); err != nil {
+			fmt.Printf("[EMAIL-STARTTLS] ERROR: STARTTLS failed: %v\n", err)
+			return err
+		}
+	} else {
+		fmt.Println("[EMAIL-STARTTLS] WARNING: Server does not advertise STARTTLS; continuing without TLS")
+	}
 
-	// Perform authentication
-	fmt.Println("[EMAIL-TLS] Authenticating...")
+	return smtpClientSend(client, auth, from, to, msg)
+}
+
+func smtpClientSend(client *smtp.Client, auth smtp.Auth, from, to, msg string) error {
+	fmt.Println("[EMAIL-CLIENT] Authenticating...")
 	if err := client.Auth(auth); err != nil {
-		fmt.Printf("[EMAIL-TLS] ERROR: Authentication failed: %v\n", err)
+		fmt.Printf("[EMAIL-CLIENT] ERROR: Authentication failed: %v\n", err)
 		return err
 	}
 
-	fmt.Println("[EMAIL-TLS] ✓ Authentication successful")
-
-	// Send the email
-	fmt.Println("[EMAIL-TLS] Sending mail...")
+	fmt.Println("[EMAIL-CLIENT] Sending mail...")
 	if err := client.Mail(from); err != nil {
-		fmt.Printf("[EMAIL-TLS] ERROR: From address error: %v\n", err)
+		fmt.Printf("[EMAIL-CLIENT] ERROR: From address error: %v\n", err)
 		return err
 	}
-
 	if err := client.Rcpt(to); err != nil {
-		fmt.Printf("[EMAIL-TLS] ERROR: Recipient error: %v\n", err)
+		fmt.Printf("[EMAIL-CLIENT] ERROR: Recipient error: %v\n", err)
 		return err
 	}
 
 	w, err := client.Data()
 	if err != nil {
-		fmt.Printf("[EMAIL-TLS] ERROR: Data writer error: %v\n", err)
+		fmt.Printf("[EMAIL-CLIENT] ERROR: Data writer error: %v\n", err)
+		return err
+	}
+	if _, err := w.Write([]byte(msg)); err != nil {
+		fmt.Printf("[EMAIL-CLIENT] ERROR: Write error: %v\n", err)
+		return err
+	}
+	if err := w.Close(); err != nil {
+		fmt.Printf("[EMAIL-CLIENT] ERROR: Close error: %v\n", err)
 		return err
 	}
 
-	_, err = w.Write([]byte(msg))
-	if err != nil {
-		fmt.Printf("[EMAIL-TLS] ERROR: Write error: %v\n", err)
-		return err
-	}
-
-	err = w.Close()
-	if err != nil {
-		fmt.Printf("[EMAIL-TLS] ERROR: Close error: %v\n", err)
-		return err
-	}
-
-	client.Quit()
-	fmt.Println("[EMAIL-TLS] ✓ Email sent successfully")
+	_ = client.Quit()
+	fmt.Println("[EMAIL-CLIENT] ✓ Email sent successfully")
 	return nil
 }
 
 func SendEmail(to, subject, htmlContent string) error {
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpPort := os.Getenv("SMTP_PORT")
-	smtpUsername := os.Getenv("SMTP_USERNAME")
-	smtpPassword := os.Getenv("SMTP_PASSWORD")
+	smtpUsername := firstNonEmptyEnv("SMTP_USERNAME", "SMTP_USER")
+	smtpPassword := firstNonEmptyEnv("SMTP_PASSWORD", "SMTP_PASS")
 	fromEmail := os.Getenv("SMTP_FROM_EMAIL")
 
 	fmt.Println("[EMAIL] === SendEmail Configuration Check ===")
@@ -211,8 +228,8 @@ func SendEmail(to, subject, htmlContent string) error {
 func SendEmailWithAttachments(to, subject, htmlContent string, attachments []string) error {
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpPort := os.Getenv("SMTP_PORT")
-	smtpUsername := os.Getenv("SMTP_USERNAME")
-	smtpPassword := os.Getenv("SMTP_PASSWORD")
+	smtpUsername := firstNonEmptyEnv("SMTP_USERNAME", "SMTP_USER")
+	smtpPassword := firstNonEmptyEnv("SMTP_PASSWORD", "SMTP_PASS")
 	fromEmail := os.Getenv("SMTP_FROM_EMAIL")
 
 	if smtpHost == "" || smtpPort == "" || smtpUsername == "" || smtpPassword == "" || fromEmail == "" {
@@ -242,4 +259,13 @@ func SendEmailWithAttachments(to, subject, htmlContent string, attachments []str
 	}
 
 	return nil
+}
+
+func firstNonEmptyEnv(keys ...string) string {
+	for _, key := range keys {
+		if v := os.Getenv(key); v != "" {
+			return v
+		}
+	}
+	return ""
 }

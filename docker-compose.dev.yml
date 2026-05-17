@@ -1,0 +1,11 @@
+services:
+  backend:
+    env_file:
+      - ./apps/backend/.env
+
+  frontend:
+    environment:
+      BACKEND_UPSTREAM: backend:8080
+    build:
+      args:
+        NGINX_TEMPLATE: nginx.conf
