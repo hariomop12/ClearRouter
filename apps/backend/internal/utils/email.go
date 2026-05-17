@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/smtp"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -13,8 +14,11 @@ func SendVerificationEmail(email, token string) error {
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpPort := os.Getenv("SMTP_PORT")
 	smtpUsername := firstNonEmptyEnv("SMTP_USERNAME", "SMTP_USER")
-	smtpPassword := firstNonEmptyEnv("SMTP_PASSWORD", "SMTP_PASS")
+	smtpPassword := normalizeSMTPSecret(firstNonEmptyEnv("SMTP_PASSWORD", "SMTP_PASS"))
 	fromEmail := os.Getenv("SMTP_FROM_EMAIL")
+	if fromEmail == "" {
+		fromEmail = smtpUsername
+	}
 
 	fmt.Println("[EMAIL] === Email Configuration Check ===")
 	fmt.Printf("[EMAIL] SMTP_HOST: %s (empty: %v)\n", smtpHost, smtpHost == "")
@@ -194,8 +198,11 @@ func SendEmail(to, subject, htmlContent string) error {
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpPort := os.Getenv("SMTP_PORT")
 	smtpUsername := firstNonEmptyEnv("SMTP_USERNAME", "SMTP_USER")
-	smtpPassword := firstNonEmptyEnv("SMTP_PASSWORD", "SMTP_PASS")
+	smtpPassword := normalizeSMTPSecret(firstNonEmptyEnv("SMTP_PASSWORD", "SMTP_PASS"))
 	fromEmail := os.Getenv("SMTP_FROM_EMAIL")
+	if fromEmail == "" {
+		fromEmail = smtpUsername
+	}
 
 	fmt.Println("[EMAIL] === SendEmail Configuration Check ===")
 	fmt.Printf("[EMAIL] To: %s\n", to)
@@ -229,8 +236,11 @@ func SendEmailWithAttachments(to, subject, htmlContent string, attachments []str
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpPort := os.Getenv("SMTP_PORT")
 	smtpUsername := firstNonEmptyEnv("SMTP_USERNAME", "SMTP_USER")
-	smtpPassword := firstNonEmptyEnv("SMTP_PASSWORD", "SMTP_PASS")
+	smtpPassword := normalizeSMTPSecret(firstNonEmptyEnv("SMTP_PASSWORD", "SMTP_PASS"))
 	fromEmail := os.Getenv("SMTP_FROM_EMAIL")
+	if fromEmail == "" {
+		fromEmail = smtpUsername
+	}
 
 	if smtpHost == "" || smtpPort == "" || smtpUsername == "" || smtpPassword == "" || fromEmail == "" {
 		return fmt.Errorf("missing email configuration")
@@ -268,4 +278,12 @@ func firstNonEmptyEnv(keys ...string) string {
 		}
 	}
 	return ""
+}
+
+func normalizeSMTPSecret(v string) string {
+	// Common copy/paste format for Gmail "App Passwords" includes spaces.
+	// SMTP auth expects the raw 16-char password (no spaces/newlines).
+	v = strings.TrimSpace(v)
+	v = strings.ReplaceAll(v, " ", "")
+	return v
 }
