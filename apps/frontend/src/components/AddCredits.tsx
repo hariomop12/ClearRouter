@@ -1,41 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
+import React, { useEffect, useState } from "react";
+import api from "../services/api";
 
 interface CreditPackage {
   amount: number;
-  credits: number;
   bonus?: number;
+  credits: number;
   popular?: boolean;
 }
 
 interface Credits {
+  available_credits: number;
   total_credits: number;
   used_credits: number;
-  available_credits: number;
 }
 
 const AddCredits: React.FC = () => {
   const [credits, setCredits] = useState<Credits | null>(null);
   const [loading, setLoading] = useState(true);
-  const [purchasing, setPurchasing] = useState(false);
+  const [purchasingAmount, setPurchasingAmount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const creditPackages: CreditPackage[] = [
     { amount: 100, credits: 100 },
-    { amount: 500, credits: 550, bonus: 50 },
-    { amount: 1000, credits: 1200, bonus: 200, popular: true },
-    { amount: 2000, credits: 2500, bonus: 500 },
-    { amount: 5000, credits: 6500, bonus: 1500 },
+    { amount: 500, bonus: 50, credits: 550 },
+    { amount: 1000, bonus: 200, credits: 1200, popular: true },
+    { amount: 2000, bonus: 500, credits: 2500 },
+    { amount: 5000, bonus: 1500, credits: 6500 },
   ];
 
   const fetchCredits = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/credits');
+      const response = await api.get("/credits");
       setCredits(response.data);
     } catch (err) {
-      console.error('Error fetching credits:', err);
-      setError('Failed to load credit information');
+      console.error("Error fetching credits:", err);
+      setError("Failed to load credit information");
     } finally {
       setLoading(false);
     }
@@ -43,21 +43,28 @@ const AddCredits: React.FC = () => {
 
   const purchaseCredits = async (amount: number) => {
     try {
-      setPurchasing(true);
+      setPurchasingAmount(amount);
       setError(null);
 
       // Create Razorpay order
-      const orderResponse = await api.post('/credits/order', {
-        amount: amount // Amount in INR, backend will convert to paise
+      const orderResponse = await api.post("/credits/order", {
+        amount: amount, // Amount in INR, backend will convert to paise
       });
 
-      const { id, order_id, amount: orderAmount, currency, key, key_id } = orderResponse.data;
+      const {
+        id,
+        order_id,
+        amount: orderAmount,
+        currency,
+        key,
+        key_id,
+      } = orderResponse.data;
       const resolvedOrderId = id || order_id;
       const resolvedKey = key || key_id;
       if (!resolvedOrderId || !resolvedKey) {
-        throw new Error('Invalid order response from server');
+        throw new Error("Invalid order response from server");
       }
-      
+
       // Store order_id for use in verification if needed
       let storedOrderId = resolvedOrderId;
 
@@ -66,92 +73,100 @@ const AddCredits: React.FC = () => {
         key: resolvedKey,
         amount: orderAmount,
         currency: currency,
-        name: 'ClearRouter',
-        description: `Purchase ${creditPackages.find(pkg => pkg.amount === amount)?.credits} credits`,
+        name: "ClearRouter",
+        description: `Purchase ${creditPackages.find((pkg) => pkg.amount === amount)?.credits} credits`,
         order_id: resolvedOrderId,
         handler: async function (response: any) {
           try {
-            console.log('Payment successful:', response);
-            console.log('Payment ID:', response.razorpay_payment_id);
-            console.log('Order ID:', response.razorpay_order_id);
-            console.log('Signature:', response.razorpay_signature);
-            
+            console.log("Payment successful:", response);
+            console.log("Payment ID:", response.razorpay_payment_id);
+            console.log("Order ID:", response.razorpay_order_id);
+            console.log("Signature:", response.razorpay_signature);
+
             // For test mode, order_id and signature might be missing
             // Use stored order_id if response doesn't have it
             const verificationData = {
-              razorpay_payment_id: response.razorpay_payment_id,
               razorpay_order_id: response.razorpay_order_id || storedOrderId,
-              razorpay_signature: response.razorpay_signature || ''
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature || "",
             };
-            
-            console.log('Verification data:', verificationData);
-            
+
+            console.log("Verification data:", verificationData);
+
             // Verify payment on backend
-            await api.post('/credits/verify', verificationData);
+            await api.post("/credits/verify", verificationData);
 
             // Refresh credits
             await fetchCredits();
-            alert('Credits added successfully!');
-            setPurchasing(false);
+            alert("Credits added successfully!");
+            setPurchasingAmount(null);
           } catch (err: any) {
-            console.error('Payment verification failed:', err);
-            setError(err.response?.data?.error || 'Payment verification failed. Please contact support if your payment was deducted.');
-            setPurchasing(false);
+            console.error("Payment verification failed:", err);
+            setError(
+              err.response?.data?.error ||
+                "Payment verification failed. Please contact support if your payment was deducted.",
+            );
+            setPurchasingAmount(null);
           }
         },
         prefill: {
-          name: 'User', // You can get this from auth context
-          email: 'user@example.com' // You can get this from auth context
+          name: "User", // You can get this from auth context
+          email: "user@example.com", // You can get this from auth context
         },
         theme: {
-          color: '#8B5CF6'
+          color: "#8B5CF6",
         },
         modal: {
-          ondismiss: function() {
-            setPurchasing(false);
-          }
-        }
+          ondismiss: function () {
+            setPurchasingAmount(null);
+          },
+        },
       };
 
       // Check if Razorpay is available
       if (!(window as any).Razorpay) {
-        throw new Error('Payment gateway not loaded. Please refresh the page and try again.');
+        throw new Error(
+          "Payment gateway not loaded. Please refresh the page and try again.",
+        );
       }
 
       const razorpay = new (window as any).Razorpay(options);
       razorpay.open();
     } catch (err: any) {
-      console.error('Error purchasing credits:', err);
-      setError(err.response?.data?.error || 'Failed to initiate payment');
-      setPurchasing(false);
+      console.error("Error purchasing credits:", err);
+      setError(err.response?.data?.error || "Failed to initiate payment");
+      setPurchasingAmount(null);
     }
   };
 
   useEffect(() => {
     fetchCredits();
-    
+
     // Load Razorpay script safely
     const loadRazorpayScript = () => {
       return new Promise((resolve, reject) => {
         // Check if script already exists
-        const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+        const existingScript = document.querySelector(
+          'script[src="https://checkout.razorpay.com/v1/checkout.js"]',
+        );
         if (existingScript) {
           resolve(true);
           return;
         }
 
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
         script.async = true;
         script.onload = () => resolve(true);
-        script.onerror = () => reject(new Error('Failed to load Razorpay script'));
+        script.onerror = () =>
+          reject(new Error("Failed to load Razorpay script"));
         document.body.appendChild(script);
       });
     };
 
     loadRazorpayScript().catch((err) => {
-      console.error('Error loading Razorpay:', err);
-      setError('Failed to load payment gateway. Please refresh the page.');
+      console.error("Error loading Razorpay:", err);
+      setError("Failed to load payment gateway. Please refresh the page.");
     });
   }, []);
 
@@ -159,13 +174,15 @@ const AddCredits: React.FC = () => {
     <div className="max-w-6xl mx-auto">
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-white mb-4">Credits</h2>
-        <p className="text-gray-300">Purchase credits to use ClearRouter AI services</p>
+        <p className="text-gray-300">
+          Purchase credits to use ClearRouter AI services
+        </p>
       </div>
 
       {error && (
         <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
           <p className="text-red-200">{error}</p>
-          <button 
+          <button
             onClick={() => setError(null)}
             className="mt-2 text-red-300 hover:text-red-100 text-sm underline"
           >
@@ -176,7 +193,9 @@ const AddCredits: React.FC = () => {
 
       {/* Current Credits */}
       <div className="mb-8 bg-white/5 backdrop-blur-sm rounded-2xl border border-gray-800 p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">Current Balance</h3>
+        <h3 className="text-xl font-semibold text-white mb-4">
+          Current Balance
+        </h3>
         {loading ? (
           <div className="animate-pulse">
             <div className="h-4 bg-gray-700 rounded w-1/3 mb-2"></div>
@@ -185,15 +204,21 @@ const AddCredits: React.FC = () => {
         ) : credits ? (
           <div className="grid md:grid-cols-3 gap-6">
             <div className="text-center">
-              <div className="text-3xl font-bold text-green-400">{credits.total_credits}</div>
+              <div className="text-3xl font-bold text-green-400">
+                {credits.total_credits}
+              </div>
               <div className="text-sm text-gray-400">Total Credits</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-red-400">{credits.used_credits}</div>
+              <div className="text-3xl font-bold text-red-400">
+                {credits.used_credits}
+              </div>
               <div className="text-sm text-gray-400">Used Credits</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-400">{credits.available_credits}</div>
+              <div className="text-3xl font-bold text-blue-400">
+                {credits.available_credits}
+              </div>
               <div className="text-sm text-gray-400">Available Credits</div>
             </div>
           </div>
@@ -204,13 +229,17 @@ const AddCredits: React.FC = () => {
 
       {/* Credit Packages */}
       <div className="mb-8">
-        <h3 className="text-xl font-semibold text-white mb-6">Purchase Credits</h3>
+        <h3 className="text-xl font-semibold text-white mb-6">
+          Purchase Credits
+        </h3>
         <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-4">
           {creditPackages.map((pkg, index) => (
             <div
               key={index}
               className={`relative bg-white/5 backdrop-blur-sm rounded-xl border p-6 text-center transition-all hover:bg-white/10 ${
-                pkg.popular ? 'border-purple-500 ring-2 ring-purple-500/20' : 'border-gray-800'
+                pkg.popular
+                  ? "border-purple-500 ring-2 ring-purple-500/20"
+                  : "border-gray-800"
               }`}
             >
               {pkg.popular && (
@@ -220,29 +249,37 @@ const AddCredits: React.FC = () => {
                   </span>
                 </div>
               )}
-              
+
               <div className="mb-4">
-                <div className="text-2xl font-bold text-white">₹{pkg.amount}</div>
+                <div className="text-2xl font-bold text-white">
+                  ₹{pkg.amount}
+                </div>
                 <div className="text-sm text-gray-400">Indian Rupees</div>
               </div>
 
               <div className="mb-4">
-                <div className="text-xl font-semibold text-green-400">{pkg.credits} Credits</div>
+                <div className="text-xl font-semibold text-green-400">
+                  {pkg.credits} Credits
+                </div>
                 {pkg.bonus && (
-                  <div className="text-sm text-purple-400">+{pkg.bonus} bonus credits</div>
+                  <div className="text-sm text-purple-400">
+                    +{pkg.bonus} bonus credits
+                  </div>
                 )}
               </div>
 
               <button
                 onClick={() => purchaseCredits(pkg.amount)}
-                disabled={purchasing}
+                disabled={purchasingAmount === pkg.amount}
                 className={`w-full px-4 py-2 rounded-lg font-medium transition-all ${
                   pkg.popular
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white'
-                    : 'bg-gray-700 hover:bg-gray-600 text-white'
+                    ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                    : "bg-gray-700 hover:bg-gray-600 text-white"
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
-                {purchasing ? 'Processing...' : 'Purchase'}
+                {purchasingAmount === pkg.amount
+                  ? "Processing..."
+                  : "Purchase"}{" "}
               </button>
             </div>
           ))}
@@ -251,19 +288,30 @@ const AddCredits: React.FC = () => {
 
       {/* Usage Information */}
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6">
-        <h4 className="text-lg font-semibold text-blue-300 mb-4">How Credits Work</h4>
+        <h4 className="text-lg font-semibold text-blue-300 mb-4">
+          How Credits Work
+        </h4>
         <div className="space-y-3 text-blue-200">
           <div className="flex items-start space-x-3">
             <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
-            <p>Credits are consumed based on the AI model you use and the number of tokens processed</p>
+            <p>
+              Credits are consumed based on the AI model you use and the number
+              of tokens processed
+            </p>
           </div>
           <div className="flex items-start space-x-3">
             <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
-            <p>Different models have different pricing - premium models cost more credits per token</p>
+            <p>
+              Different models have different pricing - premium models cost more
+              credits per token
+            </p>
           </div>
           <div className="flex items-start space-x-3">
             <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
-            <p>You can monitor your credit usage in real-time through your dashboard</p>
+            <p>
+              You can monitor your credit usage in real-time through your
+              dashboard
+            </p>
           </div>
           <div className="flex items-start space-x-3">
             <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
