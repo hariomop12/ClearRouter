@@ -84,8 +84,16 @@ func main() {
 	// Seed default user (idempotent)
 	seed.SeedDefaultUser(db)
 
+	if os.Getenv("GIN_MODE") == "release" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+	
 	// Initialize router
 	r := gin.Default()
+
+	if err := r.SetTrustedProxies(nil); err != nil {
+		log.Fatal("Failed to set trusted proxies:", err)
+	}
 
 	// Configure CORS
 	r.Use(cors.New(cors.Config{
