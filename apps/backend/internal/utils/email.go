@@ -1,42 +1,21 @@
 package utils
 
 import (
-	"crypto/tls"
+	"context"
 	"fmt"
-	"net"
-	"net/smtp"
 	"os"
-	"strings"
 	"time"
+
+	"github.com/mailgun/mailgun-go/v4"
 )
 
 func SendVerificationEmail(email, token string) error {
-	smtpHost := os.Getenv("SMTP_HOST")
-	smtpPort := os.Getenv("SMTP_PORT")
-	smtpUsername := firstNonEmptyEnv("SMTP_USERNAME", "SMTP_USER")
-	smtpPassword := normalizeSMTPSecret(
-		firstNonEmptyEnv("SMTP_PASSWORD", "SMTP_PASS"),
-	)
+	domain := os.Getenv("MAILGUN_DOMAIN")
+	apiKey := os.Getenv("MAILGUN_API_KEY")
+	fromEmail := os.Getenv("MAILGUN_FROM_EMAIL")
 
-	fromEmail := os.Getenv("SMTP_FROM_EMAIL")
-
-	if fromEmail == "" {
-		fromEmail = smtpUsername
-	}
-
-	fmt.Println("[EMAIL] === Email Configuration Check ===")
-	fmt.Printf("[EMAIL] SMTP_HOST: %s\n", smtpHost)
-	fmt.Printf("[EMAIL] SMTP_PORT: %s\n", smtpPort)
-	fmt.Printf("[EMAIL] SMTP_USERNAME: %s\n", smtpUsername)
-	fmt.Printf("[EMAIL] SMTP_PASSWORD empty: %v\n", smtpPassword == "")
-	fmt.Printf("[EMAIL] SMTP_FROM_EMAIL: %s\n", fromEmail)
-
-	if smtpHost == "" ||
-		smtpPort == "" ||
-		smtpUsername == "" ||
-		smtpPassword == "" ||
-		fromEmail == "" {
-		return fmt.Errorf("missing email configuration")
+	if domain == "" || apiKey == "" || fromEmail == "" {
+		return fmt.Errorf("missing Mailgun config: MAILGUN_DOMAIN / MAILGUN_API_KEY / MAILGUN_FROM_EMAIL")
 	}
 
 	appURL := os.Getenv("APP_URL")
@@ -44,296 +23,57 @@ func SendVerificationEmail(email, token string) error {
 		appURL = "http://localhost:8080"
 	}
 
-	verificationLink := fmt.Sprintf(
-		"%s/auth/verify?token=%s",
-		appURL,
-		token,
-	)
+	verifyLink := fmt.Sprintf("%s/auth/verify?token=%s", appURL, token)
 
-	htmlContent := fmt.Sprintf(`
-<html>
-<body style="font-family: Arial, sans-serif; line-height: 1.6;">
-	<h2>Welcome to ClearRouter!</h2>
+	subject := "ClearRouter - Verify Your Email"
 
-	<p>Please verify your email address by clicking the button below:</p>
+	html := fmt.Sprintf(`
+		<html>
+		<body style="font-family: Arial;">
+			<h2>Verify your email</h2>
+			<p>Click below to verify:</p>
 
-	<p>
-		<a href="%s"
-		   style="
-				display:inline-block;
-				padding:12px 20px;
-				background:#4CAF50;
-				color:white;
-				text-decoration:none;
-				border-radius:6px;
-		   ">
-			Verify Email
-		</a>
-	</p>
+			<a href="%s"
+			   style="padding:10px 18px;
+			   background:#4CAF50;
+			   color:white;
+			   text-decoration:none;
+			   border-radius:5px;">
+			   Verify Email
+			</a>
 
-	<p>If the button does not work, copy and paste this link:</p>
+			<p>%s</p>
+		</body>
+		</html>
+	`, verifyLink, verifyLink)
 
-	<p>%s</p>
-</body>
-</html>
-`, verificationLink, verificationLink)
+	fmt.Println("[MAILGUN] Initializing client...")
 
-	msg := fmt.Sprintf(
-		"From: Clear Route <%s>\r\n"+
-			"To: %s\r\n"+
-			"Subject: ClearRouter - Verify Your Email\r\n"+
-			"MIME-Version: 1.0\r\n"+
-			"Content-Type: text/html; charset=UTF-8\r\n"+
-			"\r\n"+
-			"%s\r\n",
+	mg := mailgun.NewMailgun(domain, apiKey)
+
+	msg := mg.NewMessage(
 		fromEmail,
-		email,
-		htmlContent,
-	)
-
-	addr := fmt.Sprintf("%s:%s", smtpHost, smtpPort)
-
-	fmt.Println("[EMAIL] === Sending Email ===")
-	fmt.Printf("[EMAIL] SMTP Server: %s\n", addr)
-	fmt.Printf("[EMAIL] From: %s\n", fromEmail)
-	fmt.Printf("[EMAIL] To: %s\n", email)
-	fmt.Println("[EMAIL] Starting SMTP send...")
-
-	auth := smtp.PlainAuth(
-		"",
-		smtpUsername,
-		smtpPassword,
-		smtpHost,
-	)
-
-	err := sendMailIPv4(
-		addr,
-		auth,
-		fromEmail,
-		[]string{email},
-		[]byte(msg),
-		smtpHost,
-	)
-
-	if err != nil {
-		fmt.Printf("[EMAIL] ERROR: %v\n", err)
-		return fmt.Errorf("failed to send email: %w", err)
-	}
-
-	fmt.Println("[EMAIL] SMTP send completed")
-	fmt.Printf(
-		"[EMAIL] SUCCESS: Verification email sent to %s\n",
-		email,
-	)
-
-	return nil
-}
-
-func SendEmail(to, subject, htmlContent string) error {
-	smtpHost := os.Getenv("SMTP_HOST")
-	smtpPort := os.Getenv("SMTP_PORT")
-	smtpUsername := firstNonEmptyEnv("SMTP_USERNAME", "SMTP_USER")
-	smtpPassword := normalizeSMTPSecret(
-		firstNonEmptyEnv("SMTP_PASSWORD", "SMTP_PASS"),
-	)
-
-	fromEmail := os.Getenv("SMTP_FROM_EMAIL")
-
-	if fromEmail == "" {
-		fromEmail = smtpUsername
-	}
-
-	if smtpHost == "" ||
-		smtpPort == "" ||
-		smtpUsername == "" ||
-		smtpPassword == "" ||
-		fromEmail == "" {
-		return fmt.Errorf("missing email configuration")
-	}
-
-	msg := fmt.Sprintf(
-		"From: Clear Route <%s>\r\n"+
-			"To: %s\r\n"+
-			"Subject: %s\r\n"+
-			"MIME-Version: 1.0\r\n"+
-			"Content-Type: text/html; charset=UTF-8\r\n"+
-			"\r\n"+
-			"%s\r\n",
-		fromEmail,
-		to,
 		subject,
-		htmlContent,
+		"", // plain text empty
+		email,
 	)
 
-	addr := fmt.Sprintf("%s:%s", smtpHost, smtpPort)
+	msg.SetHtml(html)
 
-	auth := smtp.PlainAuth(
-		"",
-		smtpUsername,
-		smtpPassword,
-		smtpHost,
-	)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-	err := sendMailIPv4(
-		addr,
-		auth,
-		fromEmail,
-		[]string{to},
-		[]byte(msg),
-		smtpHost,
-	)
+	fmt.Println("[MAILGUN] Sending email to:", email)
 
+	res, id, err := mg.Send(ctx, msg)
 	if err != nil {
-		return fmt.Errorf("failed to send email: %w", err)
+		fmt.Printf("[MAILGUN] ERROR: %v\n", err)
+		return fmt.Errorf("mailgun send failed: %w", err)
 	}
 
-	fmt.Printf("[EMAIL] SUCCESS: Email sent to %s\n", to)
+	fmt.Println("[MAILGUN] Response:", res)
+	fmt.Println("[MAILGUN] Message ID:", id)
+	fmt.Println("[MAILGUN] SUCCESS: Email sent")
 
 	return nil
-}
-
-func SendEmailWithAttachments(
-	to,
-	subject,
-	htmlContent string,
-	attachments []string,
-) error {
-	// TODO:
-	// Add real multipart attachment support later.
-	_ = attachments
-
-	return SendEmail(to, subject, htmlContent)
-}
-
-func sendMailIPv4(
-	addr string,
-	auth smtp.Auth,
-	from string,
-	to []string,
-	msg []byte,
-	host string,
-) error {
-
-	dialer := &net.Dialer{
-		Timeout: 10 * time.Second,
-	}
-
-	fmt.Println("[EMAIL] Dialing SMTP server over IPv4...")
-
-	conn, err := dialer.Dial("tcp4", addr)
-	if err != nil {
-		return fmt.Errorf("tcp4 dial failed: %w", err)
-	}
-
-	client, err := smtp.NewClient(conn, host)
-	if err != nil {
-		return fmt.Errorf(
-			"smtp client creation failed: %w",
-			err,
-		)
-	}
-
-	defer client.Close()
-
-	fmt.Println("[EMAIL] SMTP client connected")
-
-	if ok, _ := client.Extension("STARTTLS"); ok {
-		fmt.Println("[EMAIL] STARTTLS supported, upgrading connection...")
-
-		tlsConfig := &tls.Config{
-			ServerName: host,
-			MinVersion: tls.VersionTLS12,
-		}
-
-		if err := client.StartTLS(tlsConfig); err != nil {
-			return fmt.Errorf(
-				"STARTTLS failed: %w",
-				err,
-			)
-		}
-
-		fmt.Println("[EMAIL] TLS upgrade successful")
-	}
-
-	fmt.Println("[EMAIL] Authenticating SMTP session...")
-
-	if err := client.Auth(auth); err != nil {
-		return fmt.Errorf(
-			"auth failed: %w",
-			err,
-		)
-	}
-
-	fmt.Println("[EMAIL] SMTP authentication successful")
-
-	if err := client.Mail(from); err != nil {
-		return fmt.Errorf(
-			"MAIL FROM failed: %w",
-			err,
-		)
-	}
-
-	for _, recipient := range to {
-		if err := client.Rcpt(recipient); err != nil {
-			return fmt.Errorf(
-				"RCPT TO failed: %w",
-				err,
-			)
-		}
-	}
-
-	w, err := client.Data()
-	if err != nil {
-		return fmt.Errorf(
-			"DATA command failed: %w",
-			err,
-		)
-	}
-
-	_, err = w.Write(msg)
-	if err != nil {
-		return fmt.Errorf(
-			"message write failed: %w",
-			err,
-		)
-	}
-
-	err = w.Close()
-	if err != nil {
-		return fmt.Errorf(
-			"message close failed: %w",
-			err,
-		)
-	}
-
-	fmt.Println("[EMAIL] Message written successfully")
-
-	err = client.Quit()
-	if err != nil {
-		return fmt.Errorf(
-			"SMTP quit failed: %w",
-			err,
-		)
-	}
-
-	return nil
-}
-
-func firstNonEmptyEnv(keys ...string) string {
-	for _, key := range keys {
-		if value := os.Getenv(key); value != "" {
-			return value
-		}
-	}
-
-	return ""
-}
-
-func normalizeSMTPSecret(v string) string {
-	v = strings.TrimSpace(v)
-	v = strings.ReplaceAll(v, " ", "")
-	v = strings.ReplaceAll(v, "\n", "")
-	v = strings.ReplaceAll(v, "\r", "")
-
-	return v
 }
