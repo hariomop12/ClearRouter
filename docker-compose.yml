@@ -6,6 +6,9 @@ services:
       dockerfile: Dockerfile.backend
     ports:
       - "8080:8080"
+    env_file:
+      # Optional: local overrides (not baked into images)
+      - ./apps/backend/.env
     networks:
       - clear-router-network
 
@@ -14,10 +17,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        NGINX_TEMPLATE: ${NGINX_TEMPLATE:-nginx.prod.template.conf}
     ports:
       - "3002:80"
     depends_on:
       - backend
+    environment:
+      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-backend:8080}
     networks:
       - clear-router-network
 
