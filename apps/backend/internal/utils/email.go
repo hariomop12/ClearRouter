@@ -1,17 +1,23 @@
 package utils
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net"
 	"net/smtp"
 	"os"
 	"strings"
+	"time"
 )
 
 func SendVerificationEmail(email, token string) error {
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpPort := os.Getenv("SMTP_PORT")
 	smtpUsername := firstNonEmptyEnv("SMTP_USERNAME", "SMTP_USER")
-	smtpPassword := normalizeSMTPSecret(firstNonEmptyEnv("SMTP_PASSWORD", "SMTP_PASS"))
+	smtpPassword := normalizeSMTPSecret(
+		firstNonEmptyEnv("SMTP_PASSWORD", "SMTP_PASS"),
+	)
+
 	fromEmail := os.Getenv("SMTP_FROM_EMAIL")
 
 	if fromEmail == "" {
@@ -91,6 +97,7 @@ func SendVerificationEmail(email, token string) error {
 	fmt.Printf("[EMAIL] SMTP Server: %s\n", addr)
 	fmt.Printf("[EMAIL] From: %s\n", fromEmail)
 	fmt.Printf("[EMAIL] To: %s\n", email)
+	fmt.Println("[EMAIL] Starting SMTP send...")
 
 	auth := smtp.PlainAuth(
 		"",
@@ -99,12 +106,13 @@ func SendVerificationEmail(email, token string) error {
 		smtpHost,
 	)
 
-	err := smtp.SendMail(
+	err := sendMailIPv4(
 		addr,
 		auth,
 		fromEmail,
 		[]string{email},
 		[]byte(msg),
+		smtpHost,
 	)
 
 	if err != nil {
@@ -112,7 +120,11 @@ func SendVerificationEmail(email, token string) error {
 		return fmt.Errorf("failed to send email: %w", err)
 	}
 
-	fmt.Printf("[EMAIL] SUCCESS: Verification email sent to %s\n", email)
+	fmt.Println("[EMAIL] SMTP send completed")
+	fmt.Printf(
+		"[EMAIL] SUCCESS: Verification email sent to %s\n",
+		email,
+	)
 
 	return nil
 }
@@ -121,7 +133,10 @@ func SendEmail(to, subject, htmlContent string) error {
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpPort := os.Getenv("SMTP_PORT")
 	smtpUsername := firstNonEmptyEnv("SMTP_USERNAME", "SMTP_USER")
-	smtpPassword := normalizeSMTPSecret(firstNonEmptyEnv("SMTP_PASSWORD", "SMTP_PASS"))
+	smtpPassword := normalizeSMTPSecret(
+		firstNonEmptyEnv("SMTP_PASSWORD", "SMTP_PASS"),
+	)
+
 	fromEmail := os.Getenv("SMTP_FROM_EMAIL")
 
 	if fromEmail == "" {
@@ -159,12 +174,13 @@ func SendEmail(to, subject, htmlContent string) error {
 		smtpHost,
 	)
 
-	err := smtp.SendMail(
+	err := sendMailIPv4(
 		addr,
 		auth,
 		fromEmail,
 		[]string{to},
 		[]byte(msg),
+		smtpHost,
 	)
 
 	if err != nil {
@@ -183,12 +199,124 @@ func SendEmailWithAttachments(
 	attachments []string,
 ) error {
 	// TODO:
-	// Implement attachment support later using multipart MIME.
-	// For now this just sends normal HTML email.
-
+	// Add real multipart attachment support later.
 	_ = attachments
 
 	return SendEmail(to, subject, htmlContent)
+}
+
+func sendMailIPv4(
+	addr string,
+	auth smtp.Auth,
+	from string,
+	to []string,
+	msg []byte,
+	host string,
+) error {
+
+	dialer := &net.Dialer{
+		Timeout: 10 * time.Second,
+	}
+
+	fmt.Println("[EMAIL] Dialing SMTP server over IPv4...")
+
+	conn, err := dialer.Dial("tcp4", addr)
+	if err != nil {
+		return fmt.Errorf("tcp4 dial failed: %w", err)
+	}
+
+	client, err := smtp.NewClient(conn, host)
+	if err != nil {
+		return fmt.Errorf(
+			"smtp client creation failed: %w",
+			err,
+		)
+	}
+
+	defer client.Close()
+
+	fmt.Println("[EMAIL] SMTP client connected")
+
+	if ok, _ := client.Extension("STARTTLS"); ok {
+		fmt.Println("[EMAIL] STARTTLS supported, upgrading connection...")
+
+		tlsConfig := &tls.Config{
+			ServerName: host,
+			MinVersion: tls.VersionTLS12,
+		}
+
+		if err := client.StartTLS(tlsConfig); err != nil {
+			return fmt.Errorf(
+				"STARTTLS failed: %w",
+				err,
+			)
+		}
+
+		fmt.Println("[EMAIL] TLS upgrade successful")
+	}
+
+	fmt.Println("[EMAIL] Authenticating SMTP session...")
+
+	if err := client.Auth(auth); err != nil {
+		return fmt.Errorf(
+			"auth failed: %w",
+			err,
+		)
+	}
+
+	fmt.Println("[EMAIL] SMTP authentication successful")
+
+	if err := client.Mail(from); err != nil {
+		return fmt.Errorf(
+			"MAIL FROM failed: %w",
+			err,
+		)
+	}
+
+	for _, recipient := range to {
+		if err := client.Rcpt(recipient); err != nil {
+			return fmt.Errorf(
+				"RCPT TO failed: %w",
+				err,
+			)
+		}
+	}
+
+	w, err := client.Data()
+	if err != nil {
+		return fmt.Errorf(
+			"DATA command failed: %w",
+			err,
+		)
+	}
+
+	_, err = w.Write(msg)
+	if err != nil {
+		return fmt.Errorf(
+			"message write failed: %w",
+			err,
+		)
+	}
+
+	err = w.Close()
+	if err != nil {
+		return fmt.Errorf(
+			"message close failed: %w",
+			err,
+		)
+	}
+
+	fmt.Println("[EMAIL] Message written successfully")
+
+	err = client.Quit()
+	if err != nil {
+		return fmt.Errorf(
+			"SMTP quit failed: %w",
+			err,
+		)
+	}
+
+	return nil
 }
 
 func firstNonEmptyEnv(keys ...string) string {
