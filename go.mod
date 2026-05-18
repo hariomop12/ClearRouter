@@ -10,6 +10,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
+	github.com/mailgun/mailgun-go/v4 v4.23.0
 	github.com/razorpay/razorpay-go v1.4.0
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
 	golang.org/x/crypto v0.39.0
@@ -18,6 +19,8 @@ require (
 )
 
 require (
+	github.com/go-chi/chi/v5 v5.2.1 // indirect
+	github.com/mailgun/errors v0.4.0 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 )
