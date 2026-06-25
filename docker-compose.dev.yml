@@ -1,11 +1,19 @@
 services:
   backend:
-    env_file:
-      - ./apps/backend/.env
-
-  frontend:
-    environment:
-      BACKEND_UPSTREAM: backend:8080
+    container_name: clearrouter-backend-dev
     build:
-      args:
-        NGINX_TEMPLATE: nginx.conf
+      context: .
+      dockerfile: Dockerfile
+      target: dev   
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - ./apps/backend:/app 
+    networks:
+      - clearrouter-net
+
+networks:
+  clearrouter-net:
+    driver: bridge

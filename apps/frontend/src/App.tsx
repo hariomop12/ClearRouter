@@ -4,6 +4,7 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import { AuthProvider } from "./contexts/AuthContext";
 import Landing from "./components/Landing";
 import Login from "./components/Login";
@@ -47,6 +48,7 @@ function App() {
           {/* catch-all redirects to landing (or could render custom 404) */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <Analytics />
       </Router>
     </AuthProvider>
   );

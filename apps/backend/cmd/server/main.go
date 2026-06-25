@@ -56,33 +56,20 @@ func loadEnv() {
 func main() {
 	loadEnv()
 
-	// Debug: Test SMTP environment variables
-	vars := []string{"SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM_EMAIL"}
-	fmt.Println("\nTesting SMTP Environment Variables:")
-	for _, v := range vars {
-		val := os.Getenv(v)
-		if val != "" {
-			fmt.Printf("%s is set (length: %d)\n", v, len(val))
-		} else {
-			fmt.Printf("%s is NOT set\n", v)
-		}
-	}
-
-	// Database connection
+	fmt.Println("[STARTUP] Connecting to database...")
 	db, err := gorm.Open(postgres.Open(os.Getenv("DATABASE_URL")), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logger.Silent),
+		SkipDefaultTransaction: true,
 	})
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		log.Fatal("Failed to connect to database is :", err)
 	}
+	fmt.Println("[STARTUP] Database connected")
 
-	// Schema is managed by SQL migrations in /db/migrations/
-	// No AutoMigrate needed here
-	if err := dbmigrate.EnsureUsageTracking(db); err != nil {
-		log.Printf("DB schema check (usage tracking) failed: %v", err)
-	}
+	fmt.Println("[STARTUP] Running schema checks...")
+	_ = dbmigrate.EnsureUsageTracking(db)
 
-	// Seed default user (idempotent)
+	fmt.Println("[STARTUP] Seeding default user...")
 	seed.SeedDefaultUser(db)
 
 	if os.Getenv("GIN_MODE") == "release" {

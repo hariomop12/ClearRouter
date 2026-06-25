@@ -1,7 +1,0 @@
-{
-  "event": "payment.captured",
-  "payload": {
-    "payment": { "entity": { "id": "rzp_test_RMdWZKqulEGpGi", "amount": 10000, "status": "captured", "order_id": "order_RO4n3FcYoZAKGV" } },
-    "order":   { "entity": { "id": "order_RO4n3FcYoZAKGV", "amount": 10000, "notes": { "user_id": "8ade694a-d9c6-439c-bd5c-e74d9380b4f3" } } }
-  }
-}

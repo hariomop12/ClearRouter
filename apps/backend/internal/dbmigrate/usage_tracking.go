@@ -2,6 +2,7 @@ package dbmigrate
 
 import (
 	"fmt"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -49,6 +50,10 @@ func EnsureUsageTracking(db *gorm.DB) error {
 
 	for i, stmt := range statements {
 		if err := db.Exec(stmt).Error; err != nil {
+			msg := err.Error()
+			if strings.Contains(msg, "duplicate") || strings.Contains(msg, "already exists") {
+				continue
+			}
 			return fmt.Errorf("usage tracking schema step %d failed: %w", i, err)
 		}
 	}

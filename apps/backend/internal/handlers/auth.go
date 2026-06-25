@@ -79,16 +79,18 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 
 	fmt.Printf("[SIGNUP] Sending verification email to: %s\n", user.Email)
 	if err := utils.SendVerificationEmail(user.Email, token); err != nil {
-		fmt.Printf("[SIGNUP] Error sending verification email: %v\n", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error sending verification email: %v", err)})
-		return
+		fmt.Printf("[SIGNUP] Warning: Failed to send verification email: %v\n", err)
+	} else {
+		fmt.Printf("[SIGNUP] Verification email sent successfully to: %s\n", user.Email)
 	}
 
-	fmt.Printf("[SIGNUP] Verification email sent successfully to: %s\n", user.Email)
-
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "User created successfully. Verification email has been sent.",
-	})
+	msg := "User created successfully."
+	if user.EmailVerified {
+		msg += " Email is auto-verified."
+	} else {
+		msg += " Please check your email to verify your account."
+	}
+	c.JSON(http.StatusCreated, gin.H{"message": msg})
 }
 
 func (h *AuthHandler) Verify(c *gin.Context) {

@@ -1,53 +1,21 @@
-# Build frontend
-FROM node:20-alpine AS frontend-builder
-
-WORKDIR /app/frontend
-
-COPY apps/frontend/package*.json ./
-RUN npm install
-
-COPY apps/frontend .
-RUN npm run build
-
-
-# Build backend
-FROM golang:1.24-alpine AS backend-builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
+# Install Air inside the development stage
+RUN go install github.com/air-verse/air@latest
 
-COPY go.* ./
-COPY apps/backend ./apps/backend
+COPY apps/backend/go.mod apps/backend/go.sum ./
+RUN go mod download
+COPY apps/backend/ .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o server ./apps/backend/cmd/server/main.go
+# Target for local development
+FROM builder AS dev
+CMD ["air", "-c", ".air.toml"]
 
-
-# Final image
-FROM alpine:latest
-
+# Target for production
+FROM alpine:latest AS prod
 WORKDIR /app
-
-RUN apk add --no-cache ca-certificates nginx
-
-# Copy frontend build
-COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
-
-# Copy backend binary
-COPY --from=backend-builder /app/server .
-
-# Copy DB files
-COPY db/schema.sql ./db/schema.sql
-COPY db/migrations ./db/migrations
-
-# Copy nginx configuration
-COPY apps/frontend/nginx.conf /etc/nginx/nginx.conf
-
-EXPOSE 80 8080
-
-# Start script
-COPY --chmod=755 <<'EOF' /start.sh
-#!/bin/sh
-nginx &
-./server
-EOF
-
-CMD ["/start.sh"]
+RUN apk add --no-cache ca-certificates tzdata
+COPY --from=builder /app/server .
+EXPOSE 8080
+CMD ["./server"]

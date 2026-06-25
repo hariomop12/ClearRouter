@@ -3,31 +3,15 @@ services:
     container_name: clearrouter-backend
     build:
       context: .
-      dockerfile: Dockerfile.backend
+      dockerfile: Dockerfile
+      target: prod  # <--- Tells Docker to stop at the Air stage   
     ports:
       - "8080:8080"
     env_file:
-      # Optional: local overrides (not baked into images)
-      - ./apps/backend/.env
+      - .env
     networks:
-      - clear-router-network
-
-  frontend:
-    container_name: clearrouter-frontend
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-      args:
-        NGINX_TEMPLATE: ${NGINX_TEMPLATE:-nginx.prod.template.conf}
-    ports:
-      - "3002:80"
-    depends_on:
-      - backend
-    environment:
-      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-backend:8080}
-    networks:
-      - clear-router-network
+      - clearrouter-net
 
 networks:
-  clear-router-network:
+  clearrouter-net:
     driver: bridge

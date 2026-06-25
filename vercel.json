@@ -3,6 +3,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://clear-router-2t6fu.sevalla.app/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
