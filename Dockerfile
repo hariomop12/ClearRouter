@@ -1,15 +1,18 @@
 FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
-# Install Air inside the development stage
-RUN go install github.com/air-verse/air@latest
-
 COPY apps/backend/go.mod apps/backend/go.sum ./
 RUN go mod download
 COPY apps/backend/ .
+RUN go build -o server ./cmd/server/main.go
 
 # Target for local development
-FROM builder AS dev
+FROM golang:1.25-alpine AS dev
+WORKDIR /app
+RUN go install github.com/air-verse/air@latest
+COPY apps/backend/go.mod apps/backend/go.sum ./
+RUN go mod download
+COPY apps/backend/ .
 CMD ["air", "-c", ".air.toml"]
 
 # Target for production
