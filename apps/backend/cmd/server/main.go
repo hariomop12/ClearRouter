@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -16,9 +17,11 @@ import (
 
 	"github.com/hariomop12/clearrouter/apps/backend/internal/dbmigrate"
 	"github.com/hariomop12/clearrouter/apps/backend/internal/handlers"
+	"github.com/hariomop12/clearrouter/apps/backend/internal/middleware"
 	"github.com/hariomop12/clearrouter/apps/backend/internal/providers"
 	"github.com/hariomop12/clearrouter/apps/backend/internal/seed"
 	"github.com/hariomop12/clearrouter/apps/backend/internal/services"
+	"golang.org/x/time/rate"
 )
 
 func loadEnv() {
@@ -117,6 +120,9 @@ func main() {
 	providerService.RegisterProvider(providers.NewDeepSeekProvider())
 	providerService.RegisterProvider(providers.NewMistralProvider())
 
+	// Rate limiter: 1 request per 20 min per user
+	chatRateLimiter := middleware.NewPerUserRateLimiter(rate.Every(20*time.Minute), 1)
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(db)
 	apiKeyHandler := handlers.NewHandler(db)
@@ -166,10 +172,10 @@ func main() {
 		v1.POST("/chat/completions", chatHandler.ChatCompletions)
 	}
 
-	// Dashboard Chat routes (protected with JWT)
+	// Dashboard Chat routes (protected with JWT + rate limited)
 	dashboardChat := r.Group("/", authHandler.AuthMiddleware())
 	{
-		dashboardChat.POST("/chat", chatHandler.DashboardChatCompletions)
+		dashboardChat.POST("/chat", chatRateLimiter.Middleware(), chatHandler.DashboardChatCompletions)
 	}
 
 	// Chat History routes (protected)
