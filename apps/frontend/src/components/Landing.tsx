@@ -110,7 +110,7 @@ const Landing: React.FC = () => {
                   </div>
                 </div>
                 <pre className="text-sm text-gray-300 overflow-x-auto">
-                  <code>{`curl -X POST ${import.meta.env.VITE_BACKEND_URL || 'https://clear-router-2t6fu.sevalla.app'}/v1/chat/completions \\
+                  <code>{`curl -X POST ${window.location.origin}/api/v1/chat/completions \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
