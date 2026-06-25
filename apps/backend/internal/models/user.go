@@ -11,6 +11,8 @@ type User struct {
 	Name          string    `gorm:"size:255;not null"`
 	Email         string    `gorm:"size:255;not null;unique"`
 	PasswordHash  string    `gorm:"not null"`
+	GoogleID      *string   `gorm:"column:google_id;size:255;uniqueIndex"`
+	GitHubID      *string   `gorm:"column:github_id;size:255;uniqueIndex"`
 	EmailVerified bool      `gorm:"default:false"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time

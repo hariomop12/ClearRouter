@@ -60,7 +60,10 @@ func main() {
 	loadEnv()
 
 	fmt.Println("[STARTUP] Connecting to database...")
-	db, err := gorm.Open(postgres.Open(os.Getenv("DATABASE_URL")), &gorm.Config{
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		DSN:                  os.Getenv("DATABASE_URL"),
+		PreferSimpleProtocol: true,
+	}), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 		SkipDefaultTransaction: true,
 	})
@@ -72,6 +75,16 @@ func main() {
 	fmt.Println("[STARTUP] Running schema checks...")
 	_ = dbmigrate.EnsureUsageTracking(db)
 
+	fmt.Println("[STARTUP] Running migrations...")
+	migrations := []string{
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS github_id VARCHAR(255) UNIQUE`,
+	}
+	for _, m := range migrations {
+		if err := db.Exec(m).Error; err != nil {
+			log.Printf("[WARN] Migration failed: %v", err)
+		}
+	}
 	fmt.Println("[STARTUP] Seeding default user...")
 	seed.SeedDefaultUser(db)
 
@@ -125,6 +138,7 @@ func main() {
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(db)
+	oauthHandler := handlers.NewOAuthHandler(db)
 	apiKeyHandler := handlers.NewHandler(db)
 	creditsHandler := handlers.NewCreditsHandler(db)
 	chatHandler := handlers.NewChatHandler(db, providerService)
@@ -141,6 +155,12 @@ func main() {
 		auth.POST("/login", authHandler.Login)
 		// convenience alias for clients using 'signin'
 		auth.POST("/signin", authHandler.Login)
+		// OAuth routes
+		auth.GET("/google", oauthHandler.GoogleLogin)
+		auth.GET("/google/callback", oauthHandler.GoogleCallback)
+		auth.GET("/github", oauthHandler.GitHubLogin)
+		auth.GET("/github/callback", oauthHandler.GitHubCallback)
+		auth.GET("/status", oauthHandler.OAuthStatus)
 	}
 
 	// User management routes (protected)

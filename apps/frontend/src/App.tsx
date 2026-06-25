@@ -17,6 +17,7 @@ import AddCredits from "./components/AddCredits";
 import Models from "./components/Models";
 import Settings from "./components/Settings";
 import Info from "./components/Info";
+import AuthCallback from "./components/AuthCallback";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/oauth/callback" element={<AuthCallback />} />
           <Route path="/models" element={<Models />} />
           <Route path="/info" element={<Info />} />
           <Route

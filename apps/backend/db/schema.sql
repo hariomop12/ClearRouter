@@ -272,6 +272,8 @@ CREATE TABLE public.users (
     name character varying(255) NOT NULL,
     email character varying(255) NOT NULL,
     password_hash text NOT NULL,
+    google_id character varying(255) UNIQUE,
+    github_id character varying(255) UNIQUE,
     email_verified boolean DEFAULT false,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now()

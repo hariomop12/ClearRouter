@@ -1,0 +1,408 @@
+{
+  "info": {
+    "_postman_id": "11111111-1111-4111-8111-111111111111",
+    "name": "ClearRouter API Smoke",
+    "description": "Deterministic smoke coverage for ClearRouter backend auth, keys, credits, analytics, and chat history.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health/super",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health/super"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('database is healthy', function () {",
+                  "  pm.expect(body).to.have.property('dependencies');",
+                  "  pm.expect(body.dependencies).to.have.property('postgres');",
+                  "  pm.expect(body.dependencies.postgres.ok).to.eql(true);",
+                  "});",
+                  "pm.test('service is ok', function () {",
+                  "  pm.expect(body.status).to.eql('ok');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "GET /credits without auth",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/credits"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('missing auth is rejected', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{seedEmail}}\",\n  \"password\": \"{{seedPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login succeeded', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('jwt token is returned', function () {",
+                  "  pm.expect(body).to.have.property('token');",
+                  "  pm.expect(body.token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.collectionVariables.set('jwt', body.token);",
+                  "pm.collectionVariables.set('userId', body.user && body.user.id ? String(body.user.id) : '');",
+                  "pm.collectionVariables.set('userEmail', body.user && body.user.email ? body.user.email : '');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Keys",
+      "item": [
+        {
+          "name": "POST /keys/create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": "{{baseUrl}}/keys/create"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('api key created', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('api key payload is present', function () {",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body).to.have.property('api_key');",
+                  "  pm.expect(body.api_key).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.collectionVariables.set('apiKey', body.api_key);",
+                  "pm.collectionVariables.set('apiKeyId', body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /keys",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": "{{baseUrl}}/keys"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('keys list succeeded', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('keys response is an array', function () {",
+                  "  pm.expect(body).to.be.an('array');",
+                  "  pm.expect(body.length).to.be.at.least(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Credits",
+      "item": [
+        {
+          "name": "GET /credits",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": "{{baseUrl}}/credits"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('credits request succeeded', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('credits payload has balances', function () {",
+                  "  pm.expect(body).to.have.property('total_credits');",
+                  "  pm.expect(body).to.have.property('used_credits');",
+                  "  pm.expect(body).to.have.property('available_credits');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "GET /analytics/usage",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": "{{baseUrl}}/analytics/usage?days=30"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('analytics request succeeded', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('analytics has totals', function () {",
+                  "  pm.expect(body).to.have.property('total_requests');",
+                  "  pm.expect(body).to.have.property('total_tokens');",
+                  "  pm.expect(body).to.have.property('total_cost');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/usage with API key",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{apiKey}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usage?days=30"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('api key analytics request succeeded', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('api key analytics has totals', function () {",
+                  "  pm.expect(body).to.have.property('total_requests');",
+                  "  pm.expect(body).to.have.property('total_tokens');",
+                  "  pm.expect(body).to.have.property('total_cost');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chat History",
+      "item": [
+        {
+          "name": "POST /newchat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Smoke Chat\",\n  \"model\": \"{{chatModel}}\"\n}"
+            },
+            "url": "{{baseUrl}}/newchat"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('chat created', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('chat id is returned', function () {",
+                  "  pm.expect(body).to.have.property('id');",
+                  "});",
+                  "pm.collectionVariables.set('chatId', String(body.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /chathistory",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": "{{baseUrl}}/chathistory?page=1&page_size=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('chat history request succeeded', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('chat history contains at least one chat', function () {",
+                  "  pm.expect(body).to.have.property('total_count');",
+                  "  pm.expect(Number(body.total_count)).to.be.at.least(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /chathistory/:chatId",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}"
+              }
+            ],
+            "url": "{{baseUrl}}/chathistory/{{chatId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('chat detail request succeeded', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('chat detail matches id', function () {",
+                  "  pm.expect(String(body.id)).to.eql(pm.collectionVariables.get('chatId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "jwt",
+      "value": ""
+    },
+    {
+      "key": "apiKey",
+      "value": ""
+    },
+    {
+      "key": "chatId",
+      "value": ""
+    },
+    {
+      "key": "apiKeyId",
+      "value": ""
+    }
+  ]
+}

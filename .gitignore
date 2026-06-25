@@ -16,6 +16,8 @@ coverage/
 *.dll
 *.so
 *.dylib
+server
+main
 *.db
 *.sqlite
 *.sqlite3

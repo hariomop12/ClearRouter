@@ -1,0 +1,7 @@
+-- migrate:up
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS github_id VARCHAR(255) UNIQUE;
+
+-- migrate:down
+ALTER TABLE users DROP COLUMN IF EXISTS google_id;
+ALTER TABLE users DROP COLUMN IF EXISTS github_id;
