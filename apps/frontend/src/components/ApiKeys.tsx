@@ -209,7 +209,7 @@ const ApiKeys: React.FC = () => {
         <h4 className="text-lg font-semibold text-blue-300 mb-2">How to use your API key</h4>
         <p className="text-blue-200 mb-4">Include your API key in the Authorization header when making requests to the ClearRouter API:</p>
         <pre className="bg-gray-900 text-green-300 p-4 rounded-lg overflow-x-auto text-sm">
-{`curl -X POST 'http://localhost:8080/v1/chat/completions' \\
+{`curl -X POST '${import.meta.env.VITE_BACKEND_URL || 'https://clear-router-2t6fu.sevalla.app'}/v1/chat/completions' \\
   -H 'Authorization: Bearer YOUR_API_KEY' \\
   -H 'Content-Type: application/json' \\
   -d '{
