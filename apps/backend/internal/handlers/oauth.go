@@ -37,15 +37,33 @@ func generateState() (string, error) {
 }
 
 func (h *OAuthHandler) setStateCookie(c *gin.Context, state string) {
-	c.SetCookie("oauth_state", state, 300, "/", "", false, true)
+	secure := c.Request.TLS != nil || c.Request.Header.Get("X-Forwarded-Proto") == "https"
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "oauth_state",
+		Value:    state,
+		MaxAge:   300,
+		Path:     "/",
+		Secure:   secure,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
 }
 
 func (h *OAuthHandler) verifyState(c *gin.Context, state string) bool {
 	cookie, err := c.Cookie("oauth_state")
 	if err != nil || cookie == "" || cookie != state {
+		fmt.Printf("[OAUTH] state mismatch: cookie=%q url_state=%q err=%v\n", cookie, state, err)
 		return false
 	}
-	c.SetCookie("oauth_state", "", -1, "/", "", false, true)
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "oauth_state",
+		Value:    "",
+		MaxAge:   -1,
+		Path:     "/",
+		Secure:   c.Request.TLS != nil || c.Request.Header.Get("X-Forwarded-Proto") == "https",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
 	return true
 }
 
