@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import api from '../services/api';
+import api, { BACKEND_URL } from '../services/api';
 
 const Signup: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -148,7 +148,7 @@ const Signup: React.FC = () => {
           <div className="mt-8 space-y-3">
             {oauthConfig.google && (
               <a
-                href={`${api.defaults.baseURL}/auth/google`}
+                href={`${BACKEND_URL}/auth/google`}
                 className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-gray-300 transition-all border border-gray-700 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 hover:text-white"
               >
                 <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -162,7 +162,7 @@ const Signup: React.FC = () => {
             )}
             {oauthConfig.github && (
               <a
-                href={`${api.defaults.baseURL}/auth/github`}
+                href={`${BACKEND_URL}/auth/github`}
                 className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-gray-300 transition-all border border-gray-700 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 hover:text-white"
               >
                 <svg className="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 24 24">

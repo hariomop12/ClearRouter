@@ -6,6 +6,11 @@ const API_BASE_URL =
   import.meta.env.PROD ? '/api' :
   import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
+// Backend URL for direct browser navigations (OAuth redirects, etc.)
+// Must point directly to the backend, not through the proxy
+export const BACKEND_URL =
+  import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
