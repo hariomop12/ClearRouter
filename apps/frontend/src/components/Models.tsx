@@ -42,7 +42,14 @@ const Models: React.FC = () => {
         const data = response.data?.data;
         setModels(Array.isArray(data) ? data : []);
       } catch (err: any) {
-        setError("Failed to fetch models");
+        const status = err.response?.status;
+        if (status === 403) {
+          setError("Server refused the request (403). The API proxy may be misconfigured.");
+        } else if (status === 401) {
+          setError("Please log in to view models.");
+        } else {
+          setError("Failed to fetch models — server may be unreachable.");
+        }
         console.error("Error fetching models:", err);
       } finally {
         setLoading(false);
