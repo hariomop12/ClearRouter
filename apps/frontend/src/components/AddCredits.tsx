@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../services/api";
+import { useAuth } from "../contexts/AuthContext";
 
 interface CreditPackage {
   amount: number;
@@ -15,6 +16,8 @@ interface Credits {
 }
 
 const AddCredits: React.FC = () => {
+  const { state } = useAuth();
+  const user = state.user;
   const [credits, setCredits] = useState<Credits | null>(null);
   const [loading, setLoading] = useState(true);
   const [purchasingAmount, setPurchasingAmount] = useState<number | null>(null);
@@ -110,8 +113,8 @@ const AddCredits: React.FC = () => {
           }
         },
         prefill: {
-          name: "User", // You can get this from auth context
-          email: "user@example.com", // You can get this from auth context
+          name: user?.name || "",
+          email: user?.email || "",
         },
         theme: {
           color: "#8B5CF6",
