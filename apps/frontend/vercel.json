@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://barn-lined-kilometers-pairs.trycloudflare.com/:path*"
+      "destination": "https://closest-thorough-geological-station.trycloudflare.com/:path*"
     },
     {
       "source": "/(.*)",
