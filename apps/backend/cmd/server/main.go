@@ -31,12 +31,33 @@ func loadEnv() {
 		return
 	}
 
-	candidates := []string{
-		"apps/backend/.env",
-		".env",
-		"../.env",
-		"../../.env",
-		"../../../.env",
+	appEnv := os.Getenv("APP_ENV")
+	if appEnv == "" {
+		appEnv = os.Getenv("GIN_MODE")
+	}
+
+	var candidates []string
+	if appEnv == "production" {
+		candidates = []string{
+			"apps/backend/.env.production",
+			".env.production",
+			"../.env.production",
+			"../../.env.production",
+			"../../../.env.production",
+		}
+	} else {
+		candidates = []string{
+			"apps/backend/.env.local",
+			".env.local",
+			"../.env.local",
+			"../../.env.local",
+			"../../../.env.local",
+			"apps/backend/.env",
+			".env",
+			"../.env",
+			"../../.env",
+			"../../../.env",
+		}
 	}
 
 	for _, rel := range candidates {

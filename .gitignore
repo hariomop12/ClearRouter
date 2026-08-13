@@ -1,5 +1,7 @@
 .env
 .env.local
+.env.production
+.env.local.example
 *.log
 node_modules/
 dist/
@@ -32,3 +34,4 @@ main
 *.key
 *.crt
 go.work
+.vercel
