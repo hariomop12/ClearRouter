@@ -13,7 +13,7 @@
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Live Demo:** [clearrouter.hariomop.in](https://clearrouter.hariomop.in) · **API:** [api.clearrouter.hariomop.in](https://api.clearrouter.hariomop.in)
+**Live Demo:** [clearrouter.hariomop.in](https://clearrouter.hariomop.in) · **API:** [api.hariomop.in](https://api.hariomop.in)
 
 ```
 User App ──▶ ClearRouter API ──▶ Any LLM Provider
@@ -122,6 +122,93 @@ sequenceDiagram
     end
 ```
 
+### Hosting Architecture
+
+```
+                        USERS (Browser/Phone)
+                                 │
+                    ┌────────────▼────────────┐
+                    │       FRONTEND          │
+                    │  React + Vite + TS      │
+                    │   Hosted on: VERCEL     │
+                    │  clearrouter.hariomop.in │
+                    └────────────┬────────────┘
+                                 │ /api/* reverse proxy
+                                 ▼
+                    ┌──────────────────────────┐
+                    │   api.hariomop.in        │
+                    │  BigRock DNS → A record  │
+                    │      → 65.2.137.70       │
+                    └────────────┬─────────────┘
+                                 │ port 443 (HTTPS/SSL)
+                                 ▼
+                    ┌──────────────────────────┐
+                    │       NGINX (EC2)        │
+                    │  Let's Encrypt SSL cert  │
+                    │  reverse proxy           │
+                    └────────────┬─────────────┘
+                                 │ proxy_pass → 127.0.0.1:8080
+                                 ▼
+                    ┌──────────────────────────┐
+                    │    DOCKER CONTAINER      │
+                    │    clearrouter-backend   │
+                    │   Go + Gin (image from   │
+                    │        GHCR)             │
+                    └────────────┬─────────────┘
+                                 │
+              ┌──────────────────┼──────────────────┐
+              ▼                  ▼                  ▼
+        ┌──────────┐      ┌──────────────┐    ┌─────────────┐
+        │ NEON     │      │ Google/GitHub │    │ Razorpay    │
+        │ Postgres │      │ OAuth         │    │ payments    │
+        │ (server- │      │ LLM APIs      │    │ webhooks    │
+        │  less)   │      │ (OpenAI etc)  │    │             │
+        └──────────┘      └──────────────┘    └─────────────┘
+```
+
+**Components:**
+
+| Piece | Tech | Why |
+|---|---|---|
+| Frontend | Vercel (global CDN) | Free tier, git-push auto-deploy, auto-SSL on `clearrouter.hariomop.in` |
+| Backend | AWS EC2 (single instance, `65.2.137.70`) | Dockerized Go service, only SSH (22) + HTTP (80) + HTTPS (443) open |
+| Reverse proxy | nginx + Let's Encrypt | Terminates TLS, forwards to backend on `127.0.0.1:8080` (not exposed publicly) |
+| Database | Neon (serverless PostgreSQL) | Managed, free tier, no self-hosting overhead |
+| Container registry | GHCR (`ghcr.io/hariomop12/clearrouter-backend`) | Free, integrated with GitHub Actions |
+| Auto-deploy | Watchtower | Polls GHCR every 60s, pulls new image, restarts container automatically |
+
+### Deployment Pipeline (CI/CD)
+
+```
+git push → main
+    │
+    ▼
+GitHub Actions (docker-publish.yml)
+    │  1. Checkout repo
+    │  2. Login to GHCR (GITHUB_TOKEN)
+    │  3. Build multi-stage image (Dockerfile → target: prod)
+    │  4. Push → ghcr.io/hariomop12/clearrouter-backend:latest
+    │
+    ▼
+Watchtower on EC2 (every 60s)
+    │  naya image mila?
+    │    → pull → stop old container → recreate → remove old image
+    │    → no change: nothing happens
+    │
+    ▼
+clearrouter-backend container restarted with latest image
+```
+
+No manual SSH deploy needed — a push to `main` fully redeploys the backend automatically.
+
+### DNS Records
+
+| Host | Type | Target |
+|---|---|---|
+| `hariomop.in` | NS | `dns1-4.bigrock.in` (BigRock DNS) |
+| `clearrouter.hariomop.in` | CNAME | Vercel |
+| `api.hariomop.in` | A | `65.2.137.70` (EC2) |
+
 ### API Request Flow
 
 ```mermaid
@@ -180,7 +267,7 @@ sequenceDiagram
 | Payments | Razorpay (orders, verification, webhooks) |
 | Email | Resend (transactional emails) |
 | CI/CD | GitHub Actions + Newman (Postman) + Docker + GHCR |
-| Hosting | Vercel (frontend) + AWS EC2 behind Cloudflare Tunnel (backend) |
+| Hosting | Vercel (frontend) + AWS EC2 (backend, nginx + Docker) |
 
 ---
 
@@ -256,7 +343,7 @@ cd apps/frontend && pnpm dev
 ### API Key Access (OpenAI-compatible)
 
 ```bash
-curl -X POST https://api.clearrouter.hariomop.in/v1/chat/completions \
+curl -X POST https://api.hariomop.in/v1/chat/completions \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
