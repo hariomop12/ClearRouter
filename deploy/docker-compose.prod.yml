@@ -1,0 +1,15 @@
+services:
+  backend:
+    image: ghcr.io/hariomop12/clearrouter-backend:latest
+    container_name: clearrouter-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - clearrouter-net
+
+networks:
+  clearrouter-net:
+    driver: bridge

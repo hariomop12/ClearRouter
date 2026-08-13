@@ -9,8 +9,8 @@ RUN go build -o server ./cmd/server/main.go
 # Target for local development
 FROM golang:1.25-alpine AS dev
 RUN apk add --no-cache git ca-certificates build-base
-RUN go install github.com/air-verse/air@latest
-RUN go install github.com/amacneil/dbmate@latest
+RUN go install github.com/air-verse/air@v1.61.5
+RUN go install github.com/amacneil/dbmate@v2.24.0
 WORKDIR /app
 COPY apps/backend/go.mod apps/backend/go.sum ./
 RUN go mod download

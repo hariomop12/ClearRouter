@@ -105,16 +105,15 @@ func main() {
 			"http://localhost:5173",
 			"http://localhost:3002",
 			"https://clearrouter.vercel.app",
-			// Sevalla production domain(s)
-			"https://clear-router-2t6fu.sevalla.app",
+			"https://clearrouter.hariomop.in",
 		},
 		AllowOriginFunc: func(origin string) bool {
 			// Allow Vercel preview deployments like https://<project>-<hash>.vercel.app
 			if strings.HasPrefix(origin, "https://") && strings.HasSuffix(origin, ".vercel.app") {
 				return true
 			}
-			// Allow Sevalla app domains like https://<app>.sevalla.app
-			if strings.HasPrefix(origin, "https://") && strings.HasSuffix(origin, ".sevalla.app") {
+			// Allow custom domains on the hariomop.in apex
+			if origin == "https://clearrouter.hariomop.in" {
 				return true
 			}
 			return false

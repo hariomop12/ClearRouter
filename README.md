@@ -1,14 +1,41 @@
-# ClearRouter
+<div align="center">
 
-**One API to rule all LLMs.** ClearRouter is an AI API gateway that unifies 66+ models from OpenAI, Anthropic, Google, DeepSeek, and Mistral behind a single OpenAI-compatible endpoint. Built with credit-based billing, API key management, usage analytics, and a full dashboard.
+# 🔀 ClearRouter
+
+### One API to rule all LLMs — an AI Gateway built with Go
+
+**Unify 66+ LLM models (OpenAI, Anthropic, Google, DeepSeek, Mistral) behind a single OpenAI-compatible endpoint** with API-key management, credit-based billing, usage analytics, and rate limiting.
+
+[![Go](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white)](https://go.dev)
+[![Gin](https://img.shields.io/badge/Gin-1.10-6DB33F?logo=go&logoColor=white)](https://github.com/gin-gonic/gin)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+**Live Demo:** [clearrouter.hariomop.in](https://clearrouter.hariomop.in) · **API:** [api.clearrouter.hariomop.in](https://api.clearrouter.hariomop.in)
 
 ```
-User App → ClearRouter API → Any LLM Provider
+User App ──▶ ClearRouter API ──▶ Any LLM Provider
 ```
+
+</div>
 
 ---
 
-## Architecture
+## 📌 Highlights
+
+- **Single OpenAI-compatible endpoint** (`/v1/chat/completions`) that routes to 66+ models across 5 providers — clients only change the base URL, no code changes
+- **Credit-based billing** — pay-as-you-go with Razorpay orders, webhook verification, and atomic credit deduction
+- **Multi-tenant API keys** — scoped key creation/revocation with per-key usage tracking and per-user analytics
+- **Security-first auth** — JWT sessions + Google/GitHub OAuth 2.0 + email verification via Resend
+- **Abuse protection** — per-user token-bucket rate limiting and per-request timeouts
+- **Streaming responses** — forward provider streams straight back to the client
+- **Full analytics dashboard** — requests, tokens, and cost breakdown per user/key
+
+---
+
+## 🏗 Architecture
 
 ```mermaid
 graph TB
@@ -16,7 +43,7 @@ graph TB
         React["React SPA (Vercel)"]
     end
 
-    subgraph Backend ["Backend (Sevalla / Docker)"]
+    subgraph Backend ["Backend (Go / Docker)"]
         Gin["Gin Router"]
         Auth["JWT + OAuth Middleware"]
         Handler["Handlers"]
@@ -58,37 +85,7 @@ graph TB
     Handler --> GitHubOAuth
 ```
 
----
-
-## Features
-
-### For Developers
-- **Single API** — Send requests to one endpoint, route to any provider
-- **OpenAI-compatible** — Use existing OpenAI SDKs, just change the base URL
-- **API Key management** — Create, list, revoke keys from the dashboard
-- **Chat history** — Persistent conversation history with search
-
-### For Platform Owners
-- **User authentication** — Email/password + Google/GitHub OAuth
-- **Credit-based billing** — Pay-as-you-go via Razorpay
-- **Usage analytics** — Track requests, tokens, and costs per user/key
-- **Rate limiting** — Per-user rate limits for abuse prevention
-
-### Supported Models
-
-| Provider | Models |
-|----------|--------|
-| OpenAI | GPT-4, GPT-4o-mini, o1, o3-mini, and more |
-| Anthropic | Claude 3.5 Sonnet, Claude 3 Opus, Claude 3 Haiku |
-| Google | Gemini 2.5 Pro, Gemini 2.5 Flash, Gemini 2.0 Flash |
-| DeepSeek | DeepSeek-V3, DeepSeek-R1 |
-| Mistral | Mistral Large, Mistral Small, Codestral |
-
----
-
-## Flow Diagrams
-
-### Authentication Flow
+### Auth Flow
 
 ```mermaid
 sequenceDiagram
@@ -146,28 +143,51 @@ sequenceDiagram
 
 ---
 
-## Tech Stack
+## ✨ Features
+
+### For Developers
+- **Single API** — one endpoint, any provider
+- **OpenAI-compatible** — use existing OpenAI SDKs, just change the base URL
+- **API Key management** — create, list, and revoke keys from the dashboard
+- **Chat history** — persistent conversations with search
+
+### For Platform Owners
+- **User authentication** — email/password + Google/GitHub OAuth
+- **Credit-based billing** — pay-as-you-go via Razorpay
+- **Usage analytics** — requests, tokens, and costs per user/key
+- **Rate limiting** — per-user token-bucket for abuse prevention
+
+### Supported Models
+
+| Provider | Models |
+|----------|--------|
+| OpenAI | GPT-4, GPT-4o-mini, o1, o3-mini, and more |
+| Anthropic | Claude 3.5 Sonnet, Claude 3 Opus, Claude 3 Haiku |
+| Google | Gemini 2.5 Pro, Gemini 2.5 Flash, Gemini 2.0 Flash |
+| DeepSeek | DeepSeek-V3, DeepSeek-R1 |
+| Mistral | Mistral Large, Mistral Small, Codestral |
+
+---
+
+## 🛠 Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Go + Gin + GORM |
-| Database | PostgreSQL |
+| Backend | Go 1.25 + Gin + GORM |
+| Database | PostgreSQL 15 (Neon) |
 | Frontend | React 19 + TypeScript + Vite + Tailwind CSS |
 | Auth | JWT + Google OAuth 2.0 + GitHub OAuth |
 | Payments | Razorpay (orders, verification, webhooks) |
 | Email | Resend (transactional emails) |
-| CI/CD | GitHub Actions + Newman + Docker |
-| Hosting | Vercel (frontend) + Sevalla (backend) |
+| CI/CD | GitHub Actions + Newman (Postman) + Docker + GHCR |
+| Hosting | Vercel (frontend) + AWS EC2 behind Cloudflare Tunnel (backend) |
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
-- Go 1.25+
-- pnpm 9+
-- Docker + Docker Compose
-- PostgreSQL 15
+- Go 1.25+, pnpm 9+, Docker, PostgreSQL 15
 
 ### Local Development
 
@@ -178,7 +198,7 @@ cd ClearRouter
 pnpm install
 
 # 2. Copy env vars
-cp .env .env.local   # Fill in your credentials
+cp .env.example .env   # fill in your credentials
 
 # 3. Start backend (Docker with Air hot-reload)
 docker compose -f docker-compose.dev.yml up -d
@@ -197,7 +217,7 @@ cd apps/frontend && pnpm dev
 
 ---
 
-## API Reference
+## 📚 API Reference
 
 ### Public Endpoints
 
@@ -207,7 +227,6 @@ cd apps/frontend && pnpm dev
 | GET | `/models` | List all available models |
 | POST | `/auth/signup` | Create account |
 | POST | `/auth/login` | Login |
-| POST | `/auth/signin` | Login alias |
 | GET | `/auth/google` | Google OAuth login |
 | GET | `/auth/github` | GitHub OAuth login |
 | GET | `/auth/status` | OAuth provider config status |
@@ -234,10 +253,10 @@ cd apps/frontend && pnpm dev
 | GET | `/analytics/detailed` | Detailed usage log |
 | GET | `/analytics/costs` | Cost breakdown |
 
-### API Key Access
+### API Key Access (OpenAI-compatible)
 
 ```bash
-curl -X POST https://clearrouter.hariomop.in/api/v1/chat/completions \
+curl -X POST https://api.clearrouter.hariomop.in/v1/chat/completions \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -250,7 +269,7 @@ curl -X POST https://clearrouter.hariomop.in/api/v1/chat/completions \
 
 ---
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 ClearRouter/
@@ -279,31 +298,39 @@ ClearRouter/
 ├── apis/                           # Postman collection + env
 ├── scripts/                        # Utility scripts
 ├── .github/workflows/              # CI/CD pipelines
-├── Dockerfile                      # Production multi-stage build
+├── Dockerfile                      # Multi-stage production build
 ├── docker-compose.yml              # Production compose
-├── docker-compose.dev.yml          # Dev compose
-└── AGENTS.md                       # AI agent instructions
+└── .env.example                    # Environment template
 ```
 
 ---
 
-## Environment Variables
+## 🔧 Environment Variables
 
-See `.env.example` or `AGENTS.md` for full list. Required vars:
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `JWT_SECRET` | JWT signing key |
+| `GOOGLE_CLIENT_ID/SECRET` | Google OAuth app |
+| `GITHUB_CLIENT_ID/SECRET` | GitHub OAuth app |
+| `RAZORPAY_KEY_ID/SECRET` | Razorpay payments |
+| `RESEND_API_KEY` | Transactional email |
+| `OPENAI_API_KEY` (et al.) | LLM provider keys |
+| `APP_URL` / `FRONTEND_URL` | Public URLs for CORS/links |
+| `VITE_BACKEND_URL` | Frontend build-time backend URL |
 
-```
-DATABASE_URL       # PostgreSQL connection string
-JWT_SECRET         # JWT signing key
-GOOGLE_CLIENT_ID   # Google OAuth client ID
-GITHUB_CLIENT_ID   # GitHub OAuth client ID
-RAZORPAY_KEY_ID    # Razorpay API key
-RESEND_API_KEY     # Resend API key
-OPENAI_API_KEY     # At least one LLM provider key
-FRONTEND_URL       # Frontend URL for CORS
-```
+---
+
+## 🔬 What I Learned (Engineering Notes)
+
+- **Go concurrency for rate limiting** — implemented a per-user token bucket (`golang.org/x/time/rate`) so abusive dashboard traffic can't exhaust credits
+- **Provider abstraction** — a common `Provider` interface over OpenAI/Anthropic/Google/DeepSeek/Mistral request/response transforms, so adding a new model is a config change
+- **Atomic money handling** — credit deductions and payment verification use DB transactions to avoid double-spend
+- **Stateless JWT + OAuth state cookies** — CSRF-safe OAuth flow with `SameSite=Lax` + `Secure` cookies
+- **Production hardening** — CORS allow-listing, per-endpoint rate limits, trusted-proxy config, release-mode Gin, Docker multi-stage builds
 
 ---
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).

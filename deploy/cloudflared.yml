@@ -1,0 +1,9 @@
+# Cloudflare Tunnel config — after `cloudflared tunnel login` + `tunnel create`
+# Replace TUNNEL_ID with the UUID shown by `cloudflared tunnel list`
+tunnel: TUNNEL_ID
+credentials-file: /root/.cloudflared/TUNNEL_ID.json
+
+ingress:
+  - hostname: api.clearrouter.hariomop.in
+    service: http://127.0.0.1:8080
+  - service: http_status:404
