@@ -116,7 +116,9 @@ func main() {
 	// Initialize router
 	r := gin.Default()
 
-	if err := r.SetTrustedProxies(nil); err != nil {
+	// Trust nginx as reverse proxy so ClientIP() reflects the real client IP
+	// for per-IP rate limiting on /v1/chat/completions.
+	if err := r.SetTrustedProxies([]string{"127.0.0.1"}); err != nil {
 		log.Fatal("Failed to set trusted proxies:", err)
 	}
 
@@ -155,6 +157,9 @@ func main() {
 
 	// Rate limiter: 1 request per 20 min per user
 	chatRateLimiter := middleware.NewPerUserRateLimiter(rate.Every(20*time.Minute), 1)
+
+	// Rate limiter: 1 request per 20 min per IP (abuse protection on public API)
+	apiIPRateLimiter := middleware.NewPerIPRateLimiter(rate.Every(20*time.Minute), 1)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(db)
@@ -209,7 +214,7 @@ func main() {
 	// Chat routes
 	v1 := r.Group("/v1")
 	{
-		v1.POST("/chat/completions", chatHandler.ChatCompletions)
+		v1.POST("/chat/completions", apiIPRateLimiter.Middleware(), chatHandler.ChatCompletions)
 	}
 
 	// Dashboard Chat routes (protected with JWT + rate limited)

@@ -54,6 +54,49 @@ func (rl *PerUserRateLimiter) Middleware() gin.HandlerFunc {
 	}
 }
 
+// PerIPRateLimiter limits requests per client IP address.
+type PerIPRateLimiter struct {
+	mu       sync.Mutex
+	limiters map[string]*rate.Limiter
+	rate     rate.Limit
+	burst    int
+}
+
+func NewPerIPRateLimiter(r rate.Limit, burst int) *PerIPRateLimiter {
+	return &PerIPRateLimiter{
+		limiters: make(map[string]*rate.Limiter),
+		rate:     r,
+		burst:    burst,
+	}
+}
+
+func (rl *PerIPRateLimiter) Middleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ip := c.ClientIP()
+		if ip == "" {
+			ip = c.RemoteIP()
+		}
+
+		rl.mu.Lock()
+		limiter, ok := rl.limiters[ip]
+		if !ok {
+			limiter = rate.NewLimiter(rl.rate, rl.burst)
+			rl.limiters[ip] = limiter
+		}
+		rl.mu.Unlock()
+
+		if !limiter.Allow() {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error": "Rate limit exceeded. You can make 1 request every 20 minutes from the same IP. Please wait before trying again.",
+			})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
 func SecurityHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("X-Frame-Options", "DENY")

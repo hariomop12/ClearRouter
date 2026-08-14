@@ -219,6 +219,11 @@ const ApiKeys: React.FC = () => {
     ]
   }'`}
         </pre>
+        <p className="text-blue-200 mt-4 text-sm">
+          <strong>Rate limits:</strong> To protect credits from being drained, the public API endpoint
+          (<code>/api/v1/chat/completions</code>) is limited to <strong>1 request every 20 minutes per IP address</strong>.
+          The dashboard chat has a similar per-user limit. If you hit the limit, you will receive an HTTP 429 response.
+        </p>
       </div>
     </div>
   );
